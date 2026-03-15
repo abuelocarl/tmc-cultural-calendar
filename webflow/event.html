@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event | TMC Cultural Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+</head>
+<body data-page="event">
+
+  <!-- ── Navigation ── -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">
+        <span class="nav-logo-tmc">TMC</span>
+        <span class="nav-logo-sub">Cultural Calendar</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="events.html">Events</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+      </ul>
+      <button class="nav-mobile-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+    </div>
+  </nav>
+
+  <main>
+
+    <section class="event-detail-section" id="event-detail-section">
+
+      <!-- Breadcrumb (JS-rendered) -->
+      <div class="event-detail-breadcrumb" id="event-breadcrumb">
+        <a href="index.html">Home</a> / <a href="events.html">Events</a>
+      </div>
+
+      <div class="event-detail-layout">
+
+        <!-- Main content (JS-rendered) -->
+        <div class="event-detail-main">
+          <div class="event-detail-tags" id="event-detail-tags">
+            <!-- Tags rendered by JS -->
+          </div>
+          <h1 class="event-detail-title" id="event-detail-title">
+            <!-- Title rendered by JS -->
+            <span style="opacity:0.4">Loading…</span>
+          </h1>
+          <div class="event-detail-desc" id="event-detail-desc" style="display:none">
+            <!-- Description rendered by JS -->
+          </div>
+          <div class="event-detail-tags-list" id="event-detail-tags-list" style="display:none">
+            <!-- Event tags rendered by JS -->
+          </div>
+          <div class="event-detail-actions" id="event-detail-actions">
+            <!-- Action buttons rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Sidebar (JS-rendered) -->
+        <aside id="event-detail-sidebar">
+          <!-- Detail card rendered by JS -->
+        </aside>
+
+      </div>
+
+      <!-- Related Events (JS-rendered, hidden until populated) -->
+      <div class="related-section" id="related-section" style="display:none">
+        <h2 class="section-title">Related <em>Events</em></h2>
+        <div class="events-grid events-grid-sm" id="related-events-grid"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="footer-logo">TMC</span>
+        <span class="footer-tagline">Cultural Calendar</span>
+        <p class="footer-desc">Your guide to New York City's rich cultural landscape — arts, music, theater, festivals, and more.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Explore</h4>
+        <a href="index.html">Home</a>
+        <a href="events.html">All Events</a>
+        <a href="calendar.html">Calendar View</a>
+      </div>
+      <div class="footer-links">
+        <h4>Sources</h4>
+        <a href="https://www.nyc.gov" target="_blank" rel="noopener">NYC.gov</a>
+        <a href="https://www.eventbrite.com/d/ny--new-york/" target="_blank" rel="noopener">Eventbrite NYC</a>
+        <a href="https://www.timeout.com/newyork" target="_blank" rel="noopener">TimeOut New York</a>
+      </div>
+      <div class="footer-stats" id="footer-stats">
+        <h4>Stats</h4>
+        <div class="stat-loading">Loading…</div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 TMC Cultural Calendar</span>
+      <span>NYC Events Aggregator</span>
+    </div>
+  </footer>
+
+  <!-- <script>window.TMC_API_URL = 'https://your-api-server.com';</script> -->
+  <script src="app.js"></script>
+</body>
+</html>

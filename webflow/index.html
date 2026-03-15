@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TMC Cultural Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <!--
+    In Webflow: upload style.css as an asset and reference it here, or paste
+    the CSS into Project Settings → Custom Code → <head>.
+    For local/self-hosted: adjust the path below.
+  -->
+  <link rel="stylesheet" href="../static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+</head>
+<body data-page="index">
+
+  <!-- ── Navigation ── -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">
+        <span class="nav-logo-tmc">TMC</span>
+        <span class="nav-logo-sub">Cultural Calendar</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="events.html">Events</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+      </ul>
+      <button class="nav-scrape-btn" onclick="triggerScrape()">
+        <span class="scrape-icon">↻</span> Refresh Events
+      </button>
+      <button class="nav-mobile-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+    </div>
+  </nav>
+
+  <!-- ── Scrape Overlay ── -->
+  <div id="scrape-overlay" class="scrape-overlay hidden">
+    <div class="scrape-modal">
+      <div class="scrape-spinner"></div>
+      <p class="scrape-status">Scraping NYC.gov, Eventbrite &amp; TimeOut NY…</p>
+      <p class="scrape-sub">This may take 15–30 seconds</p>
+    </div>
+  </div>
+
+  <main>
+
+    <!-- ── Hero ── -->
+    <section class="hero">
+      <div class="hero-bg-grid"></div>
+      <div class="hero-content">
+        <div class="hero-eyebrow">New York City</div>
+        <h1 class="hero-title">
+          <span class="hero-title-line1">Cultural</span>
+          <span class="hero-title-line2">Calendar</span>
+        </h1>
+        <p class="hero-sub">Arts · Music · Theater · Festivals · Community · Heritage</p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-num" id="stat-total">—</span>
+            <span class="hero-stat-label">Events</span>
+          </div>
+          <div class="hero-stat-divider"></div>
+          <div class="hero-stat">
+            <span class="hero-stat-num" id="stat-sources">—</span>
+            <span class="hero-stat-label">Sources</span>
+          </div>
+          <div class="hero-stat-divider"></div>
+          <div class="hero-stat">
+            <span class="hero-stat-num">5</span>
+            <span class="hero-stat-label">Boroughs</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-scroll">Scroll to explore ↓</div>
+    </section>
+
+    <!-- ── Search ── -->
+    <section class="search-section">
+      <form class="search-form" action="events.html" method="get">
+        <div class="search-bar">
+          <input type="text" name="q" placeholder="Search events, venues, categories…" class="search-input" />
+          <button type="submit" class="search-btn">Search</button>
+        </div>
+        <div class="search-filters">
+          <select name="category" class="filter-select">
+            <option value="">All Categories</option>
+            <option value="Arts &amp; Culture">Arts &amp; Culture</option>
+            <option value="Music">Music</option>
+            <option value="Theater">Theater</option>
+            <option value="Dance">Dance</option>
+            <option value="Festivals">Festivals</option>
+            <option value="Parks &amp; Recreation">Parks &amp; Recreation</option>
+            <option value="Heritage &amp; History">Heritage &amp; History</option>
+            <option value="Community">Community</option>
+            <option value="Weekend Picks">Weekend Picks</option>
+            <option value="Other">Other</option>
+          </select>
+          <select name="borough" class="filter-select">
+            <option value="">All Boroughs</option>
+            <option value="Manhattan">Manhattan</option>
+            <option value="Brooklyn">Brooklyn</option>
+            <option value="Queens">Queens</option>
+            <option value="The Bronx">The Bronx</option>
+            <option value="Staten Island">Staten Island</option>
+          </select>
+          <label class="filter-check">
+            <input type="checkbox" name="free_only" value="1"> Free Only
+          </label>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Featured Events (JS-rendered) ── -->
+    <section class="featured-section" id="featured-section" style="display:none">
+      <div style="max-width:1400px;margin:0 auto;padding:4rem 2rem">
+        <div class="section-header">
+          <h2 class="section-title">Featured <em>Events</em></h2>
+          <a href="events.html" class="see-all">View all →</a>
+        </div>
+        <div class="featured-grid" id="featured-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── Upcoming Events (JS-rendered) ── -->
+    <section class="events-section">
+      <div class="section-header">
+        <h2 class="section-title">Upcoming <em>Events</em></h2>
+        <a href="events.html" class="see-all">View all <span id="events-total-count">—</span> →</a>
+      </div>
+      <div class="events-grid" id="events-grid">
+        <div class="empty-state"><div class="empty-icon">⏳</div><h3>Loading events…</h3></div>
+      </div>
+    </section>
+
+    <!-- ── Browse by Category (JS-rendered) ── -->
+    <section class="categories-section" style="margin:0 2rem 4rem;max-width:none">
+      <div style="max-width:1400px;margin:0 auto">
+        <div class="section-header">
+          <h2 class="section-title">Browse by <em>Category</em></h2>
+        </div>
+        <div class="categories-grid" id="categories-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── Explore by Borough (JS-rendered) ── -->
+    <section class="boroughs-section">
+      <div class="section-header">
+        <h2 class="section-title">Explore by <em>Borough</em></h2>
+      </div>
+      <div class="boroughs-grid" id="boroughs-grid"></div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="footer-logo">TMC</span>
+        <span class="footer-tagline">Cultural Calendar</span>
+        <p class="footer-desc">Your guide to New York City's rich cultural landscape — arts, music, theater, festivals, and more.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Explore</h4>
+        <a href="index.html">Home</a>
+        <a href="events.html">All Events</a>
+        <a href="calendar.html">Calendar View</a>
+      </div>
+      <div class="footer-links">
+        <h4>Sources</h4>
+        <a href="https://www.nyc.gov" target="_blank" rel="noopener">NYC.gov</a>
+        <a href="https://www.eventbrite.com/d/ny--new-york/" target="_blank" rel="noopener">Eventbrite NYC</a>
+        <a href="https://www.timeout.com/newyork" target="_blank" rel="noopener">TimeOut New York</a>
+      </div>
+      <div class="footer-stats" id="footer-stats">
+        <h4>Stats</h4>
+        <div class="stat-loading">Loading…</div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 TMC Cultural Calendar</span>
+      <span>NYC Events Aggregator</span>
+    </div>
+  </footer>
+
+  <!--
+    If your Flask API is on a different domain, uncomment and set the URL:
+    <script>window.TMC_API_URL = 'https://your-api-server.com';</script>
+  -->
+  <script src="app.js"></script>
+</body>
+</html>

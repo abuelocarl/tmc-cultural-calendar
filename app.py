@@ -289,6 +289,26 @@ def toggle_feature(event_id):
     return redirect(url_for("admin"))
 
 
+# ── CORS (for Webflow / external frontends) ──────────────────────────────────
+
+@app.after_request
+def add_cors_headers(response):
+    if request.path.startswith("/api/"):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
+@app.route("/api/<path:path>", methods=["OPTIONS"])
+def api_options(path):
+    resp = app.make_default_options_response()
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return resp
+
+
 # ── API Routes ───────────────────────────────────────────────────────────────
 
 @app.route("/api/events")

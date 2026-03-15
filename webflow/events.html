@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>All Events | TMC Cultural Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+</head>
+<body data-page="events">
+
+  <!-- ── Navigation ── -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">
+        <span class="nav-logo-tmc">TMC</span>
+        <span class="nav-logo-sub">Cultural Calendar</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="events.html" class="active">Events</a></li>
+        <li><a href="calendar.html">Calendar</a></li>
+      </ul>
+      <button class="nav-scrape-btn" onclick="triggerScrape()">
+        <span class="scrape-icon">↻</span> Refresh Events
+      </button>
+      <button class="nav-mobile-toggle" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+    </div>
+  </nav>
+
+  <!-- ── Scrape Overlay ── -->
+  <div id="scrape-overlay" class="scrape-overlay hidden">
+    <div class="scrape-modal">
+      <div class="scrape-spinner"></div>
+      <p class="scrape-status">Scraping NYC.gov, Eventbrite &amp; TimeOut NY…</p>
+      <p class="scrape-sub">This may take 15–30 seconds</p>
+    </div>
+  </div>
+
+  <main>
+
+    <!-- ── Page Header ── -->
+    <section class="page-header">
+      <h1 class="page-title">All <em>Events</em></h1>
+      <p class="page-sub" id="results-count">Loading events…</p>
+    </section>
+
+    <!-- ── Events List + Filters ── -->
+    <section class="events-list-section">
+
+      <!-- Filters Panel -->
+      <aside class="filters-panel">
+        <form method="get" action="events.html" id="filters-form">
+          <h3 class="filters-title">Filter Events</h3>
+
+          <div class="filter-group">
+            <label class="filter-label" for="filter-q">Search</label>
+            <input type="text" name="q" id="filter-q" placeholder="Keywords…" class="filter-input" />
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="filter-category">Category</label>
+            <select name="category" id="filter-category" class="filter-select" style="width:100%;color:#0d1b2a;background:#fff">
+              <option value="">All</option>
+              <option value="Arts &amp; Culture">Arts &amp; Culture</option>
+              <option value="Music">Music</option>
+              <option value="Theater">Theater</option>
+              <option value="Dance">Dance</option>
+              <option value="Festivals">Festivals</option>
+              <option value="Parks &amp; Recreation">Parks &amp; Recreation</option>
+              <option value="Heritage &amp; History">Heritage &amp; History</option>
+              <option value="Community">Community</option>
+              <option value="Weekend Picks">Weekend Picks</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="filter-source">Source</label>
+            <select name="source" id="filter-source" class="filter-select" style="width:100%;color:#0d1b2a;background:#fff">
+              <option value="">All Sources</option>
+              <!-- Populated by JS after data loads -->
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="filter-borough">Borough</label>
+            <select name="borough" id="filter-borough" class="filter-select" style="width:100%;color:#0d1b2a;background:#fff">
+              <option value="">All Boroughs</option>
+              <option value="Manhattan">Manhattan</option>
+              <option value="Brooklyn">Brooklyn</option>
+              <option value="Queens">Queens</option>
+              <option value="The Bronx">The Bronx</option>
+              <option value="Staten Island">Staten Island</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="filter-date_from">Date From</label>
+            <input type="date" name="date_from" id="filter-date_from" class="filter-input" />
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="filter-date_to">Date To</label>
+            <input type="date" name="date_to" id="filter-date_to" class="filter-input" />
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-check-label">
+              <input type="checkbox" name="free_only" id="filter-free_only" value="1" />
+              Free Events Only
+            </label>
+          </div>
+
+          <div class="filter-actions">
+            <button type="submit" class="btn-primary">Apply Filters</button>
+            <a href="events.html" class="btn-ghost">Reset</a>
+          </div>
+        </form>
+      </aside>
+
+      <!-- Results -->
+      <div class="events-results">
+        <div class="results-header">
+          <span class="results-count" id="results-count"></span>
+          <div class="results-view-toggle">
+            <button class="view-btn active" id="grid-view-btn" onclick="setView('grid')">⊞ Grid</button>
+            <button class="view-btn" id="list-view-btn" onclick="setView('list')">☰ List</button>
+          </div>
+        </div>
+
+        <!-- Events grid (JS-rendered) -->
+        <div class="events-grid" id="events-grid">
+          <div class="empty-state"><div class="empty-icon">⏳</div><h3>Loading events…</h3></div>
+        </div>
+
+        <!-- Pagination (JS-rendered) -->
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="footer-logo">TMC</span>
+        <span class="footer-tagline">Cultural Calendar</span>
+        <p class="footer-desc">Your guide to New York City's rich cultural landscape — arts, music, theater, festivals, and more.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Explore</h4>
+        <a href="index.html">Home</a>
+        <a href="events.html">All Events</a>
+        <a href="calendar.html">Calendar View</a>
+      </div>
+      <div class="footer-links">
+        <h4>Sources</h4>
+        <a href="https://www.nyc.gov" target="_blank" rel="noopener">NYC.gov</a>
+        <a href="https://www.eventbrite.com/d/ny--new-york/" target="_blank" rel="noopener">Eventbrite NYC</a>
+        <a href="https://www.timeout.com/newyork" target="_blank" rel="noopener">TimeOut New York</a>
+      </div>
+      <div class="footer-stats" id="footer-stats">
+        <h4>Stats</h4>
+        <div class="stat-loading">Loading…</div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 TMC Cultural Calendar</span>
+      <span>NYC Events Aggregator</span>
+    </div>
+  </footer>
+
+  <!-- <script>window.TMC_API_URL = 'https://your-api-server.com';</script> -->
+  <script src="app.js"></script>
+</body>
+</html>
