@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="page-header">
+  <h1 class="page-title">Event <em>Manager</em></h1>
+  <p class="page-sub">Add, edit, delete, and scrape events for TMC Cultural Calendar</p>
+</section>
+
+<!-- Stats Row -->
+<section class="admin-stats">
+  <div class="admin-stat-card">
+    <span class="admin-stat-num">{{ meta.total }}</span>
+    <span class="admin-stat-label">Total Events</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-num">{{ meta.sources | length }}</span>
+    <span class="admin-stat-label">Sources</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-num">{{ meta.categories | length }}</span>
+    <span class="admin-stat-label">Categories</span>
+  </div>
+  <div class="admin-stat-card">
+    <span class="admin-stat-num">{{ meta.events | selectattr('is_free') | list | length }}</span>
+    <span class="admin-stat-label">Free Events</span>
+  </div>
+  {% if meta.last_updated %}
+  <div class="admin-stat-card admin-stat-card--wide">
+    <span class="admin-stat-num admin-stat-num--sm">{{ meta.last_updated[:19].replace('T',' ') }}</span>
+    <span class="admin-stat-label">Last Updated</span>
+  </div>
+  {% endif %}
+</section>
+
+<!-- Actions -->
+<section class="admin-actions">
+  <a href="{{ url_for('add_event') }}" class="btn-primary">+ Add Event Manually</a>
+  <button onclick="triggerScrape('all')" class="btn-scrape">↻ Scrape All Sources</button>
+  <button onclick="triggerScrape('nyc')" class="btn-ghost">↻ NYC.gov Only</button>
+  <button onclick="triggerScrape('eventbrite')" class="btn-ghost">↻ Eventbrite Only</button>
+  <button onclick="triggerScrape('timeout')" class="btn-ghost">↻ TimeOut Only</button>
+  <a href="{{ url_for('api_stats') }}" target="_blank" class="btn-ghost">📊 API Stats</a>
+  <a href="{{ url_for('api_events') }}" target="_blank" class="btn-ghost">📄 JSON Export</a>
+</section>
+
+<!-- Event Table -->
+<section class="admin-table-section">
+  <div class="admin-table-header">
+    <h2>All Events</h2>
+    <input type="text" id="table-search" placeholder="Quick search…" class="filter-input" oninput="filterTable(this.value)" />
+  </div>
+  <div class="admin-table-wrapper">
+    <table class="admin-table" id="events-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Date</th>
+          <th>Category</th>
+          <th>Source</th>
+          <th>Borough</th>
+          <th>Free</th>
+          <th>Featured</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in meta.events %}
+        <tr class="table-row" data-search="{{ event.title|lower }} {{ event.category|lower }} {{ event.source|lower }}">
+          <td class="table-title">
+            <a href="{{ url_for('event_detail', event_id=event.id) }}" title="{{ event.title }}">
+              {{ event.title[:60] }}{% if event.title|length > 60 %}…{% endif %}
+            </a>
+          </td>
+          <td class="table-date">{{ event.date or '—' }}</td>
+          <td><span class="tag tag-category tag-sm">{{ event.category }}</span></td>
+          <td><span class="tag tag-source tag-sm">{{ event.source }}</span></td>
+          <td>{{ event.borough or '—' }}</td>
+          <td class="table-center">{{ '✓' if event.is_free else '' }}</td>
+          <td class="table-center">
+            <form method="post" action="{{ url_for('toggle_feature', event_id=event.id) }}" style="display:inline">
+              <button type="submit" class="toggle-btn {{ 'toggle-on' if event.is_featured else '' }}" title="{{ 'Remove featured' if event.is_featured else 'Mark featured' }}">
+                {{ '⭐' if event.is_featured else '☆' }}
+              </button>
+            </form>
+          </td>
+          <td class="table-actions">
+            <a href="{{ url_for('edit_event', event_id=event.id) }}" class="action-btn action-edit" title="Edit">✎</a>
+            <form method="post" action="{{ url_for('delete_event_route', event_id=event.id) }}" style="display:inline"
+                  onsubmit="return confirm('Delete \'{{ event.title[:40] }}\'?')">
+              <button type="submit" class="action-btn action-delete" title="Delete">✕</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="table-empty">No events yet. Run a scrape to populate!</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function filterTable(query) {
+  const rows = document.querySelectorAll('#events-table .table-row');
+  const q = query.toLowerCase();
+  rows.forEach(row => {
+    row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+  });
+}
+
+function triggerScrape(source) {
+  const overlay = document.getElementById('scrape-overlay');
+  const status = overlay ? overlay.querySelector('.scrape-status') : null;
+  if (overlay) {
+    overlay.classList.remove('hidden');
+    if (status) status.textContent = `Scraping ${source === 'all' ? 'all sources' : source}…`;
+  }
+  fetch('/api/scrape', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({source: source || 'all'})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (overlay) overlay.classList.add('hidden');
+    alert(`✓ Scrape complete!\n\nNYC.gov: ${data.nyc_gov || 0}\nEventbrite: ${data.eventbrite || 0}\nTimeOut NY: ${data.timeout || 0}\nTotal: ${data.total || 0} unique events`);
+    window.location.reload();
+  })
+  .catch(err => {
+    if (overlay) overlay.classList.add('hidden');
+    alert('Scrape failed: ' + err.message);
+  });
+}
+</script>
+{% endblock %}

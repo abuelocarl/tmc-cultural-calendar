@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="page-header">
+  <h1 class="page-title">{{ action }} <em>Event</em></h1>
+  <p class="page-sub">{{ 'Create a new event entry' if action == 'Add' else 'Update event information' }}</p>
+</section>
+
+<section class="form-section">
+  <form method="post" class="event-form">
+    <div class="form-grid">
+
+      <div class="form-group form-group--full">
+        <label class="form-label">Event Title *</label>
+        <input type="text" name="title" value="{{ event.get('title','') }}" required placeholder="e.g. Jazz Night at Lincoln Center" class="form-input" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select name="category" class="form-select">
+          {% for cat in categories %}
+          <option value="{{ cat }}" {{ 'selected' if event.get('category') == cat else '' }}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Borough</label>
+        <select name="borough" class="form-select">
+          <option value="">Select Borough</option>
+          {% for b in boroughs %}
+          <option value="{{ b }}" {{ 'selected' if event.get('borough') == b else '' }}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Start Date</label>
+        <input type="date" name="date" value="{{ event.get('date','') }}" class="form-input" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">End Date</label>
+        <input type="date" name="end_date" value="{{ event.get('end_date','') }}" class="form-input" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Time</label>
+        <input type="time" name="time" value="{{ event.get('time','') }}" class="form-input" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Price</label>
+        <input type="text" name="price" value="{{ event.get('price','') }}" placeholder="e.g. Free, $15, Varies" class="form-input" />
+      </div>
+
+      <div class="form-group form-group--full">
+        <label class="form-label">Venue / Location</label>
+        <input type="text" name="location" value="{{ event.get('location','') }}" placeholder="e.g. The Apollo Theater, 253 W 125th St, Harlem" class="form-input" />
+      </div>
+
+      <div class="form-group form-group--full">
+        <label class="form-label">Description</label>
+        <textarea name="description" rows="4" placeholder="Describe the event…" class="form-textarea">{{ event.get('description','') }}</textarea>
+      </div>
+
+      <div class="form-group form-group--full">
+        <label class="form-label">Event URL</label>
+        <input type="url" name="url" value="{{ event.get('url','') }}" placeholder="https://…" class="form-input" />
+      </div>
+
+      <div class="form-group form-group--full">
+        <label class="form-label">Image URL (optional)</label>
+        <input type="url" name="image_url" value="{{ event.get('image_url','') }}" placeholder="https://…" class="form-input" />
+      </div>
+
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">{{ action }} Event</button>
+      <a href="{{ url_for('admin') }}" class="btn-ghost">Cancel</a>
+    </div>
+  </form>
+</section>
+
+{% endblock %}

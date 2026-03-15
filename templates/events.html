@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="page-header">
+  <h1 class="page-title">All <em>Events</em></h1>
+  <p class="page-sub">{{ total }} events from NYC.gov, Eventbrite, and TimeOut NY</p>
+</section>
+
+<section class="events-list-section">
+
+  <!-- Filters -->
+  <aside class="filters-panel">
+    <form method="get" action="{{ url_for('event_list') }}">
+      <h3 class="filters-title">Filter Events</h3>
+
+      <div class="filter-group">
+        <label class="filter-label">Search</label>
+        <input type="text" name="q" value="{{ params.get('q','') }}" placeholder="Keywords…" class="filter-input" />
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Category</label>
+        <select name="category" class="filter-select">
+          <option value="">All</option>
+          {% for cat in meta.all_categories %}
+            <option value="{{ cat }}" {{ 'selected' if params.get('category') == cat else '' }}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Source</label>
+        <select name="source" class="filter-select">
+          <option value="">All Sources</option>
+          {% for s in meta.sources %}
+            <option value="{{ s }}" {{ 'selected' if params.get('source') == s else '' }}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Borough</label>
+        <select name="borough" class="filter-select">
+          <option value="">All Boroughs</option>
+          {% for b in meta.all_boroughs %}
+            <option value="{{ b }}" {{ 'selected' if params.get('borough') == b else '' }}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Date From</label>
+        <input type="date" name="date_from" value="{{ params.get('date_from','') }}" class="filter-input" />
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Date To</label>
+        <input type="date" name="date_to" value="{{ params.get('date_to','') }}" class="filter-input" />
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-check-label">
+          <input type="checkbox" name="free_only" value="1" {{ 'checked' if params.get('free_only') == '1' else '' }} />
+          Free Events Only
+        </label>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn-primary">Apply Filters</button>
+        <a href="{{ url_for('event_list') }}" class="btn-ghost">Reset</a>
+      </div>
+    </form>
+  </aside>
+
+  <!-- Results -->
+  <div class="events-results">
+    <div class="results-header">
+      <span class="results-count">{{ total }} events found</span>
+      <div class="results-view-toggle">
+        <button class="view-btn active" id="grid-view-btn" onclick="setView('grid')">⊞ Grid</button>
+        <button class="view-btn" id="list-view-btn" onclick="setView('list')">☰ List</button>
+      </div>
+    </div>
+
+    {% if events %}
+    <div class="events-grid" id="events-container">
+      {% for event in events %}
+      <article class="event-card">
+        <div class="event-card-header">
+          <div class="event-card-tags">
+            <span class="tag tag-source">{{ event.source }}</span>
+            {% if event.is_free %}<span class="tag tag-free">FREE</span>{% endif %}
+          </div>
+          {% if event.borough %}<span class="event-borough">{{ event.borough }}</span>{% endif %}
+        </div>
+        <h3 class="event-card-title">
+          <a href="{{ url_for('event_detail', event_id=event.id) }}">{{ event.title }}</a>
+        </h3>
+        <div class="event-card-meta">
+          <span class="event-category">{{ event.category }}</span>
+        </div>
+        <div class="event-card-details">
+          {% if event.date %}
+          <div class="event-detail-row">
+            <span class="detail-icon">📅</span>
+            <span>{{ event.date }}{% if event.time %} · {{ event.time }}{% endif %}</span>
+          </div>
+          {% endif %}
+          {% if event.location %}
+          <div class="event-detail-row">
+            <span class="detail-icon">📍</span>
+            <span>{{ event.location[:50] }}</span>
+          </div>
+          {% endif %}
+          {% if event.price %}
+          <div class="event-detail-row">
+            <span class="detail-icon">🎟</span>
+            <span>{{ event.price }}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% if event.description %}
+        <p class="event-card-desc">{{ event.description[:120] }}…</p>
+        {% endif %}
+        <div class="event-card-footer">
+          <a href="{{ url_for('event_detail', event_id=event.id) }}" class="event-card-cta">Details →</a>
+          {% if event.url %}
+          <a href="{{ event.url }}" target="_blank" rel="noopener" class="event-card-ext">↗</a>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+      {% if page > 1 %}
+      <a href="{{ url_for('event_list', **dict(params, page=page-1)) }}" class="page-btn">← Prev</a>
+      {% endif %}
+      {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+          <span class="page-btn page-btn-active">{{ p }}</span>
+        {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+          <a href="{{ url_for('event_list', **dict(params, page=p)) }}" class="page-btn">{{ p }}</a>
+        {% elif p == 4 or p == total_pages - 3 %}
+          <span class="page-dots">…</span>
+        {% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+      <a href="{{ url_for('event_list', **dict(params, page=page+1)) }}" class="page-btn">Next →</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <h3>No events match your filters</h3>
+      <p>Try adjusting your search criteria or browsing all events.</p>
+      <a href="{{ url_for('event_list') }}" class="btn-primary">View All Events</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function setView(mode) {
+  const container = document.getElementById('events-container');
+  const gridBtn = document.getElementById('grid-view-btn');
+  const listBtn = document.getElementById('list-view-btn');
+  if (mode === 'list') {
+    container.classList.remove('events-grid');
+    container.classList.add('events-list-view');
+    gridBtn.classList.remove('active');
+    listBtn.classList.add('active');
+  } else {
+    container.classList.add('events-grid');
+    container.classList.remove('events-list-view');
+    gridBtn.classList.add('active');
+    listBtn.classList.remove('active');
+  }
+  localStorage.setItem('tmc-view-mode', mode);
+}
+// Restore saved view
+const savedView = localStorage.getItem('tmc-view-mode');
+if (savedView) setView(savedView);
+</script>
+{% endblock %}

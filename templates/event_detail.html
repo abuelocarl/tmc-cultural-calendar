@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="event-detail-section">
+  <div class="event-detail-breadcrumb">
+    <a href="{{ url_for('index') }}">Home</a> /
+    <a href="{{ url_for('event_list') }}">Events</a> /
+    <span>{{ event.title[:50] }}</span>
+  </div>
+
+  <div class="event-detail-layout">
+    <!-- Main content -->
+    <div class="event-detail-main">
+      <div class="event-detail-tags">
+        <span class="tag tag-source tag-lg">{{ event.source }}</span>
+        <span class="tag tag-category tag-lg">{{ event.category }}</span>
+        {% if event.is_free %}<span class="tag tag-free tag-lg">FREE</span>{% endif %}
+        {% if event.is_featured %}<span class="tag tag-featured tag-lg">⭐ Featured</span>{% endif %}
+      </div>
+
+      <h1 class="event-detail-title">{{ event.title }}</h1>
+
+      {% if event.description %}
+      <div class="event-detail-desc">
+        <p>{{ event.description }}</p>
+      </div>
+      {% endif %}
+
+      {% if event.tags %}
+      <div class="event-detail-tags-list">
+        {% for tag in event.tags %}
+        <a href="{{ url_for('event_list', tag=tag) }}" class="event-tag"># {{ tag }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="event-detail-actions">
+        {% if event.url %}
+        <a href="{{ event.url }}" target="_blank" rel="noopener" class="btn-primary">View Original Event ↗</a>
+        {% endif %}
+        <a href="{{ url_for('edit_event', event_id=event.id) }}" class="btn-ghost">Edit Event</a>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="event-detail-sidebar">
+      <div class="detail-card">
+        <h3 class="detail-card-title">Event Details</h3>
+
+        {% if event.date %}
+        <div class="detail-item">
+          <span class="detail-item-icon">📅</span>
+          <div>
+            <strong>Date</strong>
+            <p>{{ event.date }}{% if event.end_date and event.end_date != event.date %} – {{ event.end_date }}{% endif %}</p>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if event.time %}
+        <div class="detail-item">
+          <span class="detail-item-icon">🕐</span>
+          <div>
+            <strong>Time</strong>
+            <p>{{ event.time }}</p>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if event.location %}
+        <div class="detail-item">
+          <span class="detail-item-icon">📍</span>
+          <div>
+            <strong>Location</strong>
+            <p>{{ event.location }}</p>
+            {% if event.borough %}<p class="borough-badge">{{ event.borough }}</p>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if event.price %}
+        <div class="detail-item">
+          <span class="detail-item-icon">🎟</span>
+          <div>
+            <strong>Price</strong>
+            <p>{{ event.price }}</p>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="detail-item">
+          <span class="detail-item-icon">🔗</span>
+          <div>
+            <strong>Source</strong>
+            <p>{{ event.source }}</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Related Events -->
+  {% if related %}
+  <div class="related-section">
+    <h2 class="section-title">Related <em>Events</em></h2>
+    <div class="events-grid events-grid-sm">
+      {% for rel in related %}
+      <article class="event-card">
+        <div class="event-card-tags">
+          <span class="tag tag-source">{{ rel.source }}</span>
+        </div>
+        <h3 class="event-card-title">
+          <a href="{{ url_for('event_detail', event_id=rel.id) }}">{{ rel.title }}</a>
+        </h3>
+        {% if rel.date %}
+        <div class="event-detail-row">
+          <span class="detail-icon">📅</span>
+          <span>{{ rel.date }}</span>
+        </div>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+{% endblock %}

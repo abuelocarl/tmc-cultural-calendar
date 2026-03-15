@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">New York City</div>
+    <h1 class="hero-title">
+      <span class="hero-title-line1">Cultural</span>
+      <span class="hero-title-line2">Calendar</span>
+    </h1>
+    <p class="hero-sub">Arts · Music · Theater · Festivals · Community · Heritage</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-num">{{ meta.total }}</span>
+        <span class="hero-stat-label">Events</span>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">{{ meta.sources|length }}</span>
+        <span class="hero-stat-label">Sources</span>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <span class="hero-stat-num">5</span>
+        <span class="hero-stat-label">Boroughs</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll">Scroll to explore ↓</div>
+</section>
+
+<!-- ── Search Bar ── -->
+<section class="search-section">
+  <form class="search-form" action="{{ url_for('event_list') }}" method="get">
+    <div class="search-bar">
+      <input type="text" name="q" placeholder="Search events, venues, categories…" value="{{ params.get('q','') }}" class="search-input" />
+      <button type="submit" class="search-btn">Search</button>
+    </div>
+    <div class="search-filters">
+      <select name="category" class="filter-select">
+        <option value="">All Categories</option>
+        {% for cat in meta.categories %}
+          <option value="{{ cat }}" {{ 'selected' if params.get('category') == cat else '' }}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+      <select name="borough" class="filter-select">
+        <option value="">All Boroughs</option>
+        {% for b in meta.boroughs %}
+          <option value="{{ b }}" {{ 'selected' if params.get('borough') == b else '' }}>{{ b }}</option>
+        {% endfor %}
+      </select>
+      <select name="source" class="filter-select">
+        <option value="">All Sources</option>
+        {% for s in meta.sources %}
+          <option value="{{ s }}" {{ 'selected' if params.get('source') == s else '' }}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <label class="filter-check">
+        <input type="checkbox" name="free_only" value="1" {{ 'checked' if params.get('free_only') == '1' else '' }}>
+        Free Only
+      </label>
+    </div>
+  </form>
+</section>
+
+<!-- ── Featured Events ── -->
+{% if featured %}
+<section class="featured-section">
+  <div class="section-header">
+    <h2 class="section-title">Featured <em>Events</em></h2>
+    <a href="{{ url_for('event_list') }}" class="see-all">View all →</a>
+  </div>
+  <div class="featured-grid">
+    {% for event in featured[:3] %}
+    <article class="featured-card {% if loop.first %}featured-card--large{% endif %}">
+      <div class="featured-card-bg" style="{{ 'background-image: url(' + event.image_url + ')' if event.image_url else '' }}"></div>
+      <div class="featured-card-overlay"></div>
+      <div class="featured-card-body">
+        <div class="featured-card-meta">
+          <span class="tag tag-source">{{ event.source }}</span>
+          <span class="tag tag-category">{{ event.category }}</span>
+          {% if event.is_free %}<span class="tag tag-free">FREE</span>{% endif %}
+        </div>
+        <h3 class="featured-card-title">
+          <a href="{{ url_for('event_detail', event_id=event.id) }}">{{ event.title }}</a>
+        </h3>
+        <div class="featured-card-info">
+          {% if event.date %}<span class="event-date">📅 {{ event.date }}</span>{% endif %}
+          {% if event.location %}<span class="event-loc">📍 {{ event.location[:40] }}</span>{% endif %}
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ── Upcoming Events ── -->
+<section class="events-section">
+  <div class="section-header">
+    <h2 class="section-title">Upcoming <em>Events</em></h2>
+    <a href="{{ url_for('event_list') }}" class="see-all">View all {{ meta.total }} →</a>
+  </div>
+
+  {% if events %}
+  <div class="events-grid">
+    {% for event in events[:24] %}
+    <article class="event-card">
+      <div class="event-card-header">
+        <div class="event-card-tags">
+          <span class="tag tag-source">{{ event.source }}</span>
+          {% if event.is_free %}<span class="tag tag-free">FREE</span>{% endif %}
+        </div>
+        {% if event.borough %}
+        <span class="event-borough">{{ event.borough }}</span>
+        {% endif %}
+      </div>
+      <h3 class="event-card-title">
+        <a href="{{ url_for('event_detail', event_id=event.id) }}">{{ event.title }}</a>
+      </h3>
+      <div class="event-card-meta">
+        <span class="event-category">{{ event.category }}</span>
+      </div>
+      <div class="event-card-details">
+        {% if event.date %}
+        <div class="event-detail-row">
+          <span class="detail-icon">📅</span>
+          <span>{{ event.date }}{% if event.time %} · {{ event.time }}{% endif %}</span>
+        </div>
+        {% endif %}
+        {% if event.location %}
+        <div class="event-detail-row">
+          <span class="detail-icon">📍</span>
+          <span>{{ event.location[:50] }}</span>
+        </div>
+        {% endif %}
+        {% if event.price %}
+        <div class="event-detail-row">
+          <span class="detail-icon">🎟</span>
+          <span>{{ event.price }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% if event.description %}
+      <p class="event-card-desc">{{ event.description[:120] }}…</p>
+      {% endif %}
+      <div class="event-card-footer">
+        <a href="{{ url_for('event_detail', event_id=event.id) }}" class="event-card-cta">Details →</a>
+        {% if event.url %}
+        <a href="{{ event.url }}" target="_blank" rel="noopener" class="event-card-ext">↗</a>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  {% if events|length > 24 %}
+  <div class="load-more-container">
+    <a href="{{ url_for('event_list') }}" class="load-more-btn">View All {{ meta.total }} Events →</a>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🎭</div>
+    <h3>No events found</h3>
+    <p>Try adjusting your filters or run a fresh scrape to pull the latest events.</p>
+    <button onclick="triggerScrape()" class="btn-primary">Scrape Events Now</button>
+  </div>
+  {% endif %}
+</section>
+
+<!-- ── Category Browse ── -->
+<section class="categories-section">
+  <div class="section-header">
+    <h2 class="section-title">Browse by <em>Category</em></h2>
+  </div>
+  <div class="categories-grid">
+    {% set cat_icons = {
+      "Arts & Culture": "🎨",
+      "Music": "🎵",
+      "Theater": "🎭",
+      "Dance": "💃",
+      "Festivals": "🎉",
+      "Parks & Recreation": "🌿",
+      "Heritage & History": "🏛",
+      "Community": "🤝",
+      "Weekend Picks": "⭐",
+      "Other": "📌"
+    } %}
+    {% for cat in meta.categories %}
+    <a href="{{ url_for('event_list', category=cat) }}" class="category-card">
+      <span class="category-icon">{{ cat_icons.get(cat, "📌") }}</span>
+      <span class="category-name">{{ cat }}</span>
+      <span class="category-count">{{ meta.events | selectattr('category', 'equalto', cat) | list | length }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ── Borough Map ── -->
+<section class="boroughs-section">
+  <div class="section-header">
+    <h2 class="section-title">Explore by <em>Borough</em></h2>
+  </div>
+  <div class="boroughs-grid">
+    {% for borough in ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"] %}
+    {% set count = meta.events | selectattr('borough', 'equalto', borough) | list | length %}
+    <a href="{{ url_for('event_list', borough=borough) }}" class="borough-card">
+      <span class="borough-name">{{ borough }}</span>
+      <span class="borough-count">{{ count }} event{{ 's' if count != 1 else '' }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+{% endblock %}

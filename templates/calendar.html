@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="page-header">
+  <h1 class="page-title">Calendar <em>View</em></h1>
+  <p class="page-sub">Browse events month by month across New York City</p>
+</section>
+
+<section class="calendar-section">
+  <div class="calendar-controls">
+    <button id="prev-month" class="cal-nav-btn">←</button>
+    <h2 id="month-label" class="cal-month-label">Loading…</h2>
+    <button id="next-month" class="cal-nav-btn">→</button>
+  </div>
+
+  <!-- Filter bar -->
+  <form class="cal-filters" method="get" action="{{ url_for('calendar_view') }}">
+    <input type="text" name="q" placeholder="Search…" value="{{ params.get('q','') }}" class="filter-input-sm" />
+    <select name="category" class="filter-select-sm">
+      <option value="">All Categories</option>
+      {% for cat in meta.categories %}
+        <option value="{{ cat }}" {{ 'selected' if params.get('category') == cat else '' }}>{{ cat }}</option>
+      {% endfor %}
+    </select>
+    <select name="source" class="filter-select-sm">
+      <option value="">All Sources</option>
+      {% for s in meta.sources %}
+        <option value="{{ s }}" {{ 'selected' if params.get('source') == s else '' }}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="filter-apply-btn">Apply</button>
+    <a href="{{ url_for('calendar_view') }}" class="filter-clear-btn">Clear</a>
+  </form>
+
+  <!-- Calendar Grid -->
+  <div class="calendar-grid" id="calendar-grid">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Event Popover -->
+  <div id="event-popover" class="event-popover hidden">
+    <div class="popover-header">
+      <span id="popover-date" class="popover-date"></span>
+      <button onclick="document.getElementById('event-popover').classList.add('hidden')" class="popover-close">×</button>
+    </div>
+    <div id="popover-events" class="popover-events"></div>
+  </div>
+</section>
+
+<!-- Legend -->
+<section class="cal-legend-section">
+  <h3 class="legend-title">Categories</h3>
+  <div class="cal-legend">
+    {% set cat_colors = {
+      "Arts & Culture": "#e63946",
+      "Music": "#2a9d8f",
+      "Theater": "#9b59b6",
+      "Dance": "#e76f51",
+      "Festivals": "#f4a261",
+      "Parks & Recreation": "#2d6a4f",
+      "Heritage & History": "#8b6914",
+      "Community": "#457b9d",
+      "Weekend Picks": "#c0392b",
+      "Other": "#666"
+    } %}
+    {% for cat in meta.categories %}
+    <div class="legend-item">
+      <span class="legend-dot" style="background:{{ cat_colors.get(cat, '#666') }}"></span>
+      <span>{{ cat }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Upcoming list below calendar -->
+<section class="upcoming-list-section">
+  <h2 class="section-title">All Events <em>Chronologically</em></h2>
+  <div class="event-list-table">
+    {% set dated = [] %}
+    {% for event in (events_by_date.values() | sum(start=[])) %}
+    <a href="{{ url_for('event_detail', event_id=event.id) }}" class="event-row">
+      <span class="event-row-date">{{ event.date }}</span>
+      <span class="event-row-title">{{ event.title }}</span>
+      <span class="event-row-cat">{{ event.category }}</span>
+      <span class="event-row-loc">{{ event.location[:35] if event.location else '' }}</span>
+      {% if event.is_free %}<span class="tag tag-free tag-sm">FREE</span>{% endif %}
+    </a>
+    {% else %}
+    <p class="empty-state-sm">No events match current filters. <a href="{{ url_for('calendar_view') }}">Clear filters</a></p>
+    {% endfor %}
+  </div>
+</section>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  // Pass events data to calendar JS
+  window.TMC_EVENTS = {{ events_json | safe }};
+</script>
+{% endblock %}
