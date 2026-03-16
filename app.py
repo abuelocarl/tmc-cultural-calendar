@@ -27,6 +27,7 @@ from consolidator import (
     normalize_event,
     CATEGORIES,
     BOROUGHS,
+    DC_NEIGHBORHOODS,
 )
 
 # ── App Setup ────────────────────────────────────────────────────────────────
@@ -76,13 +77,14 @@ def filter_events(events: List[Dict], params: Dict) -> List[Dict]:
     category = params.get("category", "")
     source = params.get("source", "")
     borough = params.get("borough", "")
+    city = params.get("city", "")
     date_from = params.get("date_from", "")
     date_to = params.get("date_to", "")
     free_only = params.get("free_only") == "1"
     tag = params.get("tag", "")
-    
+
     result = events
-    
+
     if q:
         result = [
             e for e in result
@@ -96,6 +98,8 @@ def filter_events(events: List[Dict], params: Dict) -> List[Dict]:
         result = [e for e in result if e.get("source") == source]
     if borough:
         result = [e for e in result if e.get("borough") == borough]
+    if city:
+        result = [e for e in result if e.get("city", "New York") == city]
     if date_from:
         result = [e for e in result if e.get("date", "") >= date_from]
     if date_to:
@@ -104,7 +108,7 @@ def filter_events(events: List[Dict], params: Dict) -> List[Dict]:
         result = [e for e in result if e.get("is_free")]
     if tag:
         result = [e for e in result if tag in e.get("tags", [])]
-    
+
     return result
 
 
@@ -114,8 +118,10 @@ def filter_events(events: List[Dict], params: Dict) -> List[Dict]:
 def index():
     meta = get_events_metadata()
     params = request.args.to_dict()
-    filtered = filter_events(meta["events"], params)
-    
+    # Homepage is NYC-specific; DC has its own page
+    nyc_params = dict(params, city="New York")
+    filtered = filter_events(meta["events"], nyc_params)
+
     # Upcoming events (today onwards)
     today = date.today().isoformat()
     upcoming = [e for e in filtered if e.get("date", "") >= today or not e.get("date")]
@@ -183,6 +189,48 @@ def event_list():
         total=total,
         total_pages=(total + per_page - 1) // per_page,
         title="All Events | TMC Cultural Calendar",
+    )
+
+
+@app.route("/dc")
+def dc_events():
+    meta = get_events_metadata()
+    params = request.args.to_dict()
+    params["city"] = "Washington DC"   # always pin to DC
+    filtered = filter_events(meta["events"], params)
+
+    today = date.today().isoformat()
+    upcoming = [e for e in filtered if e.get("date", "") >= today or not e.get("date")]
+
+    featured = [e for e in upcoming if e.get("is_featured")][:6]
+    if len(featured) < 3:
+        featured = upcoming[:6]
+
+    dc_sources = sorted(set(e.get("source", "") for e in filtered))
+    dc_neighborhoods = sorted(set(e.get("borough", "") for e in filtered if e.get("borough")))
+
+    # Pagination
+    page = int(params.get("page", 1))
+    per_page = 24
+    total = len(upcoming)
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated = upcoming[start:end]
+
+    return render_template(
+        "dc.html",
+        events=paginated,
+        featured=featured,
+        params={k: v for k, v in params.items() if k != "city"},
+        meta=meta,
+        dc_sources=dc_sources,
+        dc_neighborhoods=dc_neighborhoods,
+        page=page,
+        per_page=per_page,
+        total=total,
+        total_pages=(total + per_page - 1) // per_page,
+        today=today,
+        title="Washington DC Events | TMC Cultural Calendar",
     )
 
 

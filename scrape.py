@@ -3,7 +3,7 @@ TMC Cultural Calendar - Main Scraper Runner
 Run this script to scrape all sources and consolidate events.
 
 Usage:
-    python scrape.py                    # Scrape all sources
+    python scrape.py                    # Scrape all sources (NYC + DC)
     python scrape.py --source nyc       # Scrape only NYC.gov
     python scrape.py --source eventbrite
     python scrape.py --source timeout
@@ -13,7 +13,14 @@ Usage:
     python scrape.py --source mcny
     python scrape.py --source newmuseum
     python scrape.py --source nyhistory
-    python scrape.py --source museums   # All museum scrapers
+    python scrape.py --source museums   # All NYC museum scrapers
+    python scrape.py --source dc        # All DC museum scrapers
+    python scrape.py --source nga
+    python scrape.py --source hirshhorn
+    python scrape.py --source nmnh
+    python scrape.py --source nmaahc
+    python scrape.py --source nbm
+    python scrape.py --source spymuseum
     python scrape.py --no-save          # Scrape but don't save
 """
 
@@ -32,6 +39,13 @@ from scrapers.whitney_scraper import scrape_whitney_events
 from scrapers.mcny_scraper import scrape_mcny_events
 from scrapers.newmuseum_scraper import scrape_newmuseum_events
 from scrapers.nyhistory_scraper import scrape_nyhistory_events
+# DC scrapers
+from scrapers.nga_scraper import scrape_nga_events
+from scrapers.hirshhorn_scraper import scrape_hirshhorn_events
+from scrapers.nmnh_scraper import scrape_nmnh_events
+from scrapers.nmaahc_scraper import scrape_nmaahc_events
+from scrapers.nbm_scraper import scrape_nbm_events
+from scrapers.spymuseum_scraper import scrape_spymuseum_events
 from consolidator import consolidate_events, save_events, save_events_csv
 
 # Configure logging
@@ -47,6 +61,7 @@ logging.basicConfig(
 logger = logging.getLogger("tmc-scraper")
 
 MUSEUM_SOURCES = {"amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory"}
+DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmaahc", "nbm", "spymuseum"}
 
 
 def run_scraper(source: str = "all", save: bool = True) -> dict:
@@ -64,6 +79,13 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         "mcny": 0,
         "newmuseum": 0,
         "nyhistory": 0,
+        # DC
+        "nga": 0,
+        "hirshhorn": 0,
+        "nmnh": 0,
+        "nmaahc": 0,
+        "nbm": 0,
+        "spymuseum": 0,
         "total": 0,
         "errors": [],
     }
@@ -77,9 +99,16 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
     mcny_events = []
     newmuseum_events = []
     nyhistory_events = []
+    nga_events = []
+    hirshhorn_events = []
+    nmnh_events = []
+    nmaahc_events = []
+    nbm_events = []
+    spymuseum_events = []
 
     is_all = source == "all"
     is_museums = source == "museums"
+    is_dc = source == "dc"
 
     # ── NYC.gov ─────────────────────────────────────────────────
     if is_all or source == "nyc":
@@ -189,6 +218,78 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
             logger.error(msg)
             results["errors"].append(msg)
 
+    # ── NGA ─────────────────────────────────────────────────────
+    if is_all or is_dc or source == "nga":
+        logger.info("🖼  Scraping National Gallery of Art events...")
+        try:
+            nga_events = scrape_nga_events()
+            results["nga"] = len(nga_events)
+            logger.info(f"  ✓ NGA: {len(nga_events)} events found")
+        except Exception as e:
+            msg = f"NGA scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── Hirshhorn ────────────────────────────────────────────────
+    if is_all or is_dc or source == "hirshhorn":
+        logger.info("🎨  Scraping Hirshhorn Museum events...")
+        try:
+            hirshhorn_events = scrape_hirshhorn_events()
+            results["hirshhorn"] = len(hirshhorn_events)
+            logger.info(f"  ✓ Hirshhorn: {len(hirshhorn_events)} events found")
+        except Exception as e:
+            msg = f"Hirshhorn scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── NMNH ─────────────────────────────────────────────────────
+    if is_all or is_dc or source == "nmnh":
+        logger.info("🦴  Scraping NMNH events...")
+        try:
+            nmnh_events = scrape_nmnh_events()
+            results["nmnh"] = len(nmnh_events)
+            logger.info(f"  ✓ NMNH: {len(nmnh_events)} events found")
+        except Exception as e:
+            msg = f"NMNH scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── NMAAHC ───────────────────────────────────────────────────
+    if is_all or is_dc or source == "nmaahc":
+        logger.info("🏛  Scraping NMAAHC events...")
+        try:
+            nmaahc_events = scrape_nmaahc_events()
+            results["nmaahc"] = len(nmaahc_events)
+            logger.info(f"  ✓ NMAAHC: {len(nmaahc_events)} events found")
+        except Exception as e:
+            msg = f"NMAAHC scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── National Building Museum ─────────────────────────────────
+    if is_all or is_dc or source == "nbm":
+        logger.info("🏗  Scraping National Building Museum events...")
+        try:
+            nbm_events = scrape_nbm_events()
+            results["nbm"] = len(nbm_events)
+            logger.info(f"  ✓ National Building Museum: {len(nbm_events)} events found")
+        except Exception as e:
+            msg = f"NBM scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── Spy Museum ───────────────────────────────────────────────
+    if is_all or is_dc or source == "spymuseum":
+        logger.info("🕵  Scraping International Spy Museum events...")
+        try:
+            spymuseum_events = scrape_spymuseum_events()
+            results["spymuseum"] = len(spymuseum_events)
+            logger.info(f"  ✓ Spy Museum: {len(spymuseum_events)} events found")
+        except Exception as e:
+            msg = f"Spy Museum scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
     # ── Consolidate ─────────────────────────────────────────────
     logger.info("🔄  Consolidating events...")
     all_events = consolidate_events(
@@ -201,6 +302,12 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         mcny_events=mcny_events,
         newmuseum_events=newmuseum_events,
         nyhistory_events=nyhistory_events,
+        nga_events=nga_events,
+        hirshhorn_events=hirshhorn_events,
+        nmnh_events=nmnh_events,
+        nmaahc_events=nmaahc_events,
+        nbm_events=nbm_events,
+        spymuseum_events=spymuseum_events,
     )
     results["total"] = len(all_events)
 
@@ -219,17 +326,26 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
     logger.info(
         f"\n{'='*50}\n"
         f"  TMC Cultural Calendar - Scrape Complete\n"
-        f"  NYC.gov:        {results['nyc_gov']:>4} events\n"
-        f"  Eventbrite:     {results['eventbrite']:>4} events\n"
-        f"  TimeOut NY:     {results['timeout']:>4} events\n"
-        f"  AMNH:           {results['amnh']:>4} events\n"
-        f"  MoMA:           {results['moma']:>4} events\n"
-        f"  Whitney:        {results['whitney']:>4} events\n"
-        f"  MCNY:           {results['mcny']:>4} events\n"
-        f"  New Museum:     {results['newmuseum']:>4} events\n"
-        f"  NY Historical:  {results['nyhistory']:>4} events\n"
-        f"  Total:          {results['total']:>4} unique events\n"
-        f"  Duration:       {elapsed:.1f}s\n"
+        f"  ── New York City ──────────────────────\n"
+        f"  NYC.gov:              {results['nyc_gov']:>4} events\n"
+        f"  Eventbrite:           {results['eventbrite']:>4} events\n"
+        f"  TimeOut NY:           {results['timeout']:>4} events\n"
+        f"  AMNH:                 {results['amnh']:>4} events\n"
+        f"  MoMA:                 {results['moma']:>4} events\n"
+        f"  Whitney:              {results['whitney']:>4} events\n"
+        f"  MCNY:                 {results['mcny']:>4} events\n"
+        f"  New Museum:           {results['newmuseum']:>4} events\n"
+        f"  NY Historical:        {results['nyhistory']:>4} events\n"
+        f"  ── Washington DC ──────────────────────\n"
+        f"  NGA:                  {results['nga']:>4} events\n"
+        f"  Hirshhorn:            {results['hirshhorn']:>4} events\n"
+        f"  NMNH:                 {results['nmnh']:>4} events\n"
+        f"  NMAAHC:               {results['nmaahc']:>4} events\n"
+        f"  Natl Building Museum: {results['nbm']:>4} events\n"
+        f"  Spy Museum:           {results['spymuseum']:>4} events\n"
+        f"  ───────────────────────────────────────\n"
+        f"  Total:                {results['total']:>4} unique events\n"
+        f"  Duration:             {elapsed:.1f}s\n"
         f"{'='*50}"
     )
 
@@ -259,9 +375,10 @@ Examples:
     parser.add_argument(
         "--source",
         choices=[
-            "all", "museums",
+            "all", "museums", "dc",
             "nyc", "eventbrite", "timeout",
             "amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory",
+            "nga", "hirshhorn", "nmnh", "nmaahc", "nbm", "spymuseum",
         ],
         default="all",
         help="Which source to scrape (default: all)",

@@ -30,6 +30,21 @@ CATEGORIES = [
 
 BOROUGHS = ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"]
 
+DC_NEIGHBORHOODS = [
+    "National Mall",
+    "Penn Quarter",
+    "Capitol Hill",
+    "Georgetown",
+    "Dupont Circle",
+    "Adams Morgan",
+    "Logan Circle",
+    "Shaw",
+    "U Street",
+    "Brookland",
+    "Foggy Bottom",
+    "Southwest Waterfront",
+]
+
 
 def normalize_date(date_str: str) -> str:
     """Normalize date strings to ISO format YYYY-MM-DD."""
@@ -94,6 +109,7 @@ def generate_event_id(event: Dict) -> str:
 
 def normalize_event(event: Dict) -> Dict:
     """Normalize an event dict to a standard format."""
+    city = event.get("city", "New York")
     normalized = {
         "id": "",
         "title": event.get("title", "").strip(),
@@ -105,6 +121,7 @@ def normalize_event(event: Dict) -> Dict:
         "url": event.get("url", ""),
         "category": event.get("category", "Other"),
         "source": event.get("source", "Unknown"),
+        "city": city,
         "borough": event.get("borough", "") or infer_borough(event.get("location", "")),
         "image_url": event.get("image_url", ""),
         "price": event.get("price", "See website"),
@@ -172,6 +189,13 @@ def consolidate_events(
     mcny_events: List[Dict] = None,
     newmuseum_events: List[Dict] = None,
     nyhistory_events: List[Dict] = None,
+    # DC sources
+    nga_events: List[Dict] = None,
+    hirshhorn_events: List[Dict] = None,
+    nmnh_events: List[Dict] = None,
+    nmaahc_events: List[Dict] = None,
+    nbm_events: List[Dict] = None,
+    spymuseum_events: List[Dict] = None,
 ) -> List[Dict]:
     """Merge events from all sources, normalize, and deduplicate."""
     all_raw = []
@@ -186,6 +210,13 @@ def consolidate_events(
         ("MCNY", mcny_events),
         ("New Museum", newmuseum_events),
         ("NY Historical", nyhistory_events),
+        # DC
+        ("NGA", nga_events),
+        ("Hirshhorn", hirshhorn_events),
+        ("NMNH", nmnh_events),
+        ("NMAAHC", nmaahc_events),
+        ("National Building Museum", nbm_events),
+        ("Spy Museum", spymuseum_events),
     ]:
         if batch:
             all_raw.extend(batch)
@@ -229,6 +260,7 @@ def save_events(events: List[Dict], filepath: str = "data/events.json") -> None:
 
 # Neighborhood lookup for known NYC museum addresses
 _NEIGHBORHOOD_MAP = {
+    # NYC
     "200 central park west":    "Upper West Side",
     "11 w 53rd":                "Midtown West",
     "99 gansevoort":            "Meatpacking District",
@@ -241,6 +273,27 @@ _NEIGHBORHOOD_MAP = {
     "lincoln center":           "Lincoln Square",
     "brooklyn museum":          "Prospect Heights",
     "200 eastern pkwy":         "Prospect Heights",
+    # Washington DC
+    "constitution ave":         "National Mall",
+    "independence ave":         "National Mall",
+    "national mall":            "National Mall",
+    "smithsonian":              "National Mall",
+    "6th st & constitution":    "National Mall",
+    "10th st & constitution":   "National Mall",
+    "7th st sw":                "National Mall",
+    "1400 constitution":        "National Mall",
+    "401 f st":                 "Penn Quarter",
+    "700 l'enfant":             "Penn Quarter",
+    "l'enfant plaza":           "Penn Quarter",
+    "f st nw":                  "Penn Quarter",
+    "pennsylvania ave":         "Penn Quarter",
+    "dupont circle":            "Dupont Circle",
+    "georgetown":               "Georgetown",
+    "capitol hill":             "Capitol Hill",
+    "adams morgan":             "Adams Morgan",
+    "u street":                 "U Street",
+    "14th st nw":               "Logan Circle",
+    "shaw":                     "Shaw",
 }
 
 # CSV column names exactly as in the TMC template (preserving spaces in flag columns)
@@ -342,7 +395,7 @@ def event_to_csv_row(event: Dict) -> Dict:
     return {
         "form_submitted_by":        event.get("source", "TMC Scraper"),
         "form_event_title":         event.get("title", ""),
-        "form_event_city":          "New York",
+        "form_event_city":          event.get("city", "New York"),
         "form_event_borough":       event.get("borough", ""),
         "form_event_area":          neighborhood,
         "form_event_date":          _format_date_for_csv(event.get("date", "")),

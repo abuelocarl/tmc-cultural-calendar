@@ -19,6 +19,17 @@
         <span class="nav-logo-tmc">TMC</span>
         <span class="nav-logo-sub">Cultural Calendar</span>
       </a>
+      <!-- City tabs -->
+      <div class="nav-city-tabs">
+        <a href="{{ url_for('index') }}"
+           class="city-tab {{ 'city-tab--active' if request.endpoint in ('index', 'event_list', 'calendar_view') else '' }}">
+          🗽 New York
+        </a>
+        <a href="{{ url_for('dc_events') }}"
+           class="city-tab city-tab--dc {{ 'city-tab--active' if request.endpoint == 'dc_events' else '' }}">
+          🏛 Washington DC
+        </a>
+      </div>
       <ul class="nav-links">
         <li><a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">Home</a></li>
         <li><a href="{{ url_for('event_list') }}" class="{{ 'active' if request.endpoint == 'event_list' else '' }}">Events</a></li>
@@ -50,7 +61,7 @@
   <div id="scrape-overlay" class="scrape-overlay hidden">
     <div class="scrape-modal">
       <div class="scrape-spinner"></div>
-      <p class="scrape-status">Scraping NYC.gov, Eventbrite & TimeOut NY…</p>
+      <p class="scrape-status">Scraping NYC & DC museum calendars…</p>
       <p class="scrape-sub">This may take 15–30 seconds</p>
     </div>
   </div>
@@ -76,10 +87,17 @@
         <a href="{{ url_for('admin') }}">Manage Events</a>
       </div>
       <div class="footer-links">
-        <h4>Sources</h4>
+        <h4>NYC Sources</h4>
         <a href="https://www.nyc.gov" target="_blank" rel="noopener">NYC.gov</a>
-        <a href="https://www.eventbrite.com/d/ny--new-york/" target="_blank" rel="noopener">Eventbrite NYC</a>
-        <a href="https://www.timeout.com/newyork" target="_blank" rel="noopener">TimeOut New York</a>
+        <a href="https://www.amnh.org/calendar" target="_blank" rel="noopener">AMNH</a>
+        <a href="https://www.moma.org/calendar" target="_blank" rel="noopener">MoMA</a>
+        <a href="https://whitney.org/events" target="_blank" rel="noopener">Whitney</a>
+      </div>
+      <div class="footer-links">
+        <h4>DC Sources</h4>
+        <a href="https://www.nga.gov/whats-on.html" target="_blank" rel="noopener">Natl Gallery of Art</a>
+        <a href="https://hirshhorn.si.edu/exhibitions/calendar/" target="_blank" rel="noopener">Hirshhorn</a>
+        <a href="https://naturalhistory.si.edu/visit/events" target="_blank" rel="noopener">NMNH</a>
         <a href="{{ url_for('api_events') }}" target="_blank">API</a>
       </div>
       <div class="footer-stats" id="footer-stats">

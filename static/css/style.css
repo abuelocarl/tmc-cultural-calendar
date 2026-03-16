@@ -83,6 +83,31 @@ input, select, textarea { font-family: inherit; }
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+/* ── City Tabs ── */
+.nav-city-tabs {
+  display: flex;
+  gap: 0.15rem;
+  background: rgba(255,255,255,0.07);
+  border-radius: var(--radius);
+  padding: 0.2rem;
+  flex-shrink: 0;
+}
+.city-tab {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  padding: 0.3rem 0.75rem;
+  border-radius: 3px;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.city-tab:hover { color: var(--gold); background: rgba(201,168,76,0.1); }
+.city-tab--active { color: var(--navy) !important; background: var(--gold) !important; }
+.city-tab--dc.city-tab--active { background: var(--crimson) !important; color: #fff !important; }
+
 .nav-links {
   display: flex;
   list-style: none;
@@ -250,6 +275,32 @@ input, select, textarea { font-family: inherit; }
   color: rgba(255,255,255,0.4);
 }
 .hero-stat-divider { width: 1px; height: 40px; background: rgba(201,168,76,0.3); }
+/* DC hero variant */
+.hero--dc { background: linear-gradient(135deg, #1a0a08 0%, #2d1a3a 40%, #0a1a2d 100%); }
+.hero--dc .hero-eyebrow { color: var(--crimson-soft); }
+.hero--dc .hero-stat-num { color: var(--crimson-soft); }
+
+/* Hero city link */
+.hero-city-link {
+  display: inline-block;
+  margin-top: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 3px;
+  padding: 0.35rem 0.9rem;
+  transition: var(--transition);
+}
+.hero-city-link:hover { color: var(--gold); border-color: var(--gold); }
+.hero-city-link strong { color: var(--crimson-soft); }
+
+/* Borough cards with icon */
+.borough-card { position: relative; display: flex; flex-direction: column; gap: 0.25rem; }
+.borough-icon { font-size: 1.5rem; }
+
 .hero-scroll {
   position: absolute;
   bottom: 2rem;
