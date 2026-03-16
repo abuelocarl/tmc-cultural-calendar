@@ -32,7 +32,7 @@ from scrapers.whitney_scraper import scrape_whitney_events
 from scrapers.mcny_scraper import scrape_mcny_events
 from scrapers.newmuseum_scraper import scrape_newmuseum_events
 from scrapers.nyhistory_scraper import scrape_nyhistory_events
-from consolidator import consolidate_events, save_events
+from consolidator import consolidate_events, save_events, save_events_csv
 
 # Configure logging
 logging.basicConfig(
@@ -207,9 +207,10 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
     # ── Save ────────────────────────────────────────────────────
     if save and all_events:
         save_events(all_events, "data/events.json")
-        logger.info(f"💾  Saved {len(all_events)} events to data/events.json")
+        save_events_csv(all_events, "data/events.csv")
+        logger.info(f"💾  Saved {len(all_events)} events to data/events.json + data/events.csv")
     elif save and not all_events:
-        logger.warning("⚠️  No events found — data/events.json not updated")
+        logger.warning("⚠️  No events found — data files not updated")
 
     elapsed = time.time() - start_time
     results["elapsed_seconds"] = round(elapsed, 2)

@@ -3,6 +3,7 @@ TMC Cultural Calendar - Event Consolidator
 Merges, deduplicates, and normalizes events from all scrapers.
 """
 
+import csv
 import json
 import logging
 import re
@@ -223,6 +224,155 @@ def save_events(events: List[Dict], filepath: str = "data/events.json") -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
     
+    logger.info(f"Saved {len(events)} events to {filepath}")
+
+
+# Neighborhood lookup for known NYC museum addresses
+_NEIGHBORHOOD_MAP = {
+    "200 central park west":    "Upper West Side",
+    "11 w 53rd":                "Midtown West",
+    "99 gansevoort":            "Meatpacking District",
+    "1220 fifth ave":           "East Harlem",
+    "235 bowery":               "Lower East Side",
+    "170 central park west":    "Upper West Side",
+    "1000 fifth avenue":        "Upper East Side",
+    "79th street":              "Upper East Side",
+    "fort tryon":               "Washington Heights",
+    "lincoln center":           "Lincoln Square",
+    "brooklyn museum":          "Prospect Heights",
+    "200 eastern pkwy":         "Prospect Heights",
+}
+
+# CSV column names exactly as in the TMC template (preserving spaces in flag columns)
+CSV_COLUMNS = [
+    "form_submitted_by",
+    "form_event_title",
+    "form_event_city",
+    "form_event_borough",
+    "form_event_area",
+    "form_event_date",
+    "form_event_description",
+    "form_event_time",
+    "form_event_endtime",
+    "form_event_host_name",
+    "form_event_location_name",
+    "form_event_location_address",
+    "form_event_neighborhood",
+    "form_event_url",
+    "form _flag_price",
+    "form _flag_audience",
+    "form _flag_food",
+    "form _flag_after_hours",
+    "form _flag_flag_outdoor",
+]
+
+
+def _split_location(location: str):
+    """Split 'Venue Name, 123 Street, City, State ZIP' into (name, address)."""
+    if not location:
+        return "", ""
+    parts = location.split(",", 1)
+    name = parts[0].strip()
+    address = parts[1].strip() if len(parts) > 1 else ""
+    return name, address
+
+
+def _infer_neighborhood(location: str) -> str:
+    """Best-effort neighborhood from location string."""
+    loc_lower = location.lower()
+    for key, neighborhood in _NEIGHBORHOOD_MAP.items():
+        if key in loc_lower:
+            return neighborhood
+    return ""
+
+
+def _format_date_for_csv(date_iso: str) -> str:
+    """Convert YYYY-MM-DD to M/D/YYYY for the submission form."""
+    if not date_iso:
+        return ""
+    try:
+        dt = datetime.strptime(date_iso[:10], "%Y-%m-%d")
+        return dt.strftime("%-m/%-d/%Y")
+    except ValueError:
+        return date_iso
+
+
+def _flag_after_hours(time_str: str) -> str:
+    """Return 'Yes' if event starts at 6 pm or later."""
+    if not time_str:
+        return ""
+    # 24-hour format: HH:MM
+    match_24 = re.match(r"^(\d{2}):(\d{2})$", time_str.strip())
+    if match_24:
+        return "Yes" if int(match_24.group(1)) >= 18 else ""
+    # 12-hour format: e.g. '7 pm', '6:30 pm'
+    match_12 = re.search(r"(\d{1,2})(?::\d{2})?\s*(am|pm)", time_str, re.I)
+    if match_12:
+        hour, meridiem = int(match_12.group(1)), match_12.group(2).lower()
+        if meridiem == "pm" and hour != 12:
+            hour += 12
+        return "Yes" if hour >= 18 else ""
+    return ""
+
+
+def _flag_price(event: Dict) -> str:
+    """Return 'Free', 'Paid', or empty string."""
+    if event.get("is_free"):
+        return "Free"
+    price = event.get("price", "").lower()
+    if "free" in price or "$0" in price:
+        return "Free"
+    if re.search(r"\$\d", price):
+        return "Paid"
+    return ""
+
+
+def event_to_csv_row(event: Dict) -> Dict:
+    """Map a normalized event dict to a TMC CSV submission row."""
+    location_name, location_address = _split_location(event.get("location", ""))
+    neighborhood = _infer_neighborhood(event.get("location", ""))
+
+    # End time: if we have a time range like '7-10 pm', extract the end
+    time_str = event.get("time", "")
+    end_time = ""
+    range_match = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", time_str, re.I)
+    if range_match:
+        end_time = range_match.group(1).strip()
+
+    return {
+        "form_submitted_by":        event.get("source", "TMC Scraper"),
+        "form_event_title":         event.get("title", ""),
+        "form_event_city":          "New York",
+        "form_event_borough":       event.get("borough", ""),
+        "form_event_area":          neighborhood,
+        "form_event_date":          _format_date_for_csv(event.get("date", "")),
+        "form_event_description":   event.get("description", ""),
+        "form_event_time":          time_str,
+        "form_event_endtime":       end_time,
+        "form_event_host_name":     event.get("source", ""),
+        "form_event_location_name": location_name,
+        "form_event_location_address": location_address,
+        "form_event_neighborhood":  neighborhood,
+        "form_event_url":           event.get("url", ""),
+        "form _flag_price":         _flag_price(event),
+        "form _flag_audience":      "",
+        "form _flag_food":          "",
+        "form _flag_after_hours":   _flag_after_hours(time_str),
+        "form _flag_flag_outdoor":  "",
+    }
+
+
+def save_events_csv(events: List[Dict], filepath: str = "data/events.csv") -> None:
+    """Save consolidated events to CSV in TMC submission format."""
+    path = Path(filepath)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
+        writer.writeheader()
+        for event in events:
+            writer.writerow(event_to_csv_row(event))
+
     logger.info(f"Saved {len(events)} events to {filepath}")
 
 
