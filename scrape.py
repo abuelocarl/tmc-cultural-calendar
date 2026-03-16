@@ -19,6 +19,7 @@ from datetime import datetime
 from scrapers.nyc_gov_scraper import scrape_nyc_gov_events
 from scrapers.eventbrite_scraper import scrape_eventbrite_nyc
 from scrapers.timeout_scraper import scrape_timeout_nyc
+from scrapers.amnh_scraper import scrape_amnh_events
 from consolidator import consolidate_events, save_events
 
 # Configure logging
@@ -43,13 +44,15 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         "nyc_gov": 0,
         "eventbrite": 0,
         "timeout": 0,
+        "amnh": 0,
         "total": 0,
         "errors": [],
     }
-    
+
     nyc_events = []
     eventbrite_events = []
     timeout_events = []
+    amnh_events = []
     
     # ── NYC.gov ─────────────────────────────────────────────────
     if source in ("all", "nyc"):
@@ -87,12 +90,25 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
             logger.error(msg)
             results["errors"].append(msg)
     
+    # ── AMNH ────────────────────────────────────────────────────
+    if source in ("all", "amnh"):
+        logger.info("🦕  Scraping AMNH events...")
+        try:
+            amnh_events = scrape_amnh_events()
+            results["amnh"] = len(amnh_events)
+            logger.info(f"  ✓ AMNH: {len(amnh_events)} events found")
+        except Exception as e:
+            msg = f"AMNH scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
     # ── Consolidate ─────────────────────────────────────────────
     logger.info("🔄  Consolidating events...")
     all_events = consolidate_events(
         nyc_events=nyc_events,
         eventbrite_events=eventbrite_events,
         timeout_events=timeout_events,
+        amnh_events=amnh_events,
     )
     results["total"] = len(all_events)
     
@@ -113,6 +129,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         f"  NYC.gov:    {results['nyc_gov']:>4} events\n"
         f"  Eventbrite: {results['eventbrite']:>4} events\n"
         f"  TimeOut NY: {results['timeout']:>4} events\n"
+        f"  AMNH:       {results['amnh']:>4} events\n"
         f"  Total:      {results['total']:>4} unique events\n"
         f"  Duration:   {elapsed:.1f}s\n"
         f"{'='*50}"
@@ -136,7 +153,7 @@ Examples:
     )
     parser.add_argument(
         "--source",
-        choices=["all", "nyc", "eventbrite", "timeout"],
+        choices=["all", "nyc", "eventbrite", "timeout", "amnh"],
         default="all",
         help="Which source to scrape (default: all)",
     )

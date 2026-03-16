@@ -165,10 +165,11 @@ def consolidate_events(
     nyc_events: List[Dict] = None,
     eventbrite_events: List[Dict] = None,
     timeout_events: List[Dict] = None,
+    amnh_events: List[Dict] = None,
 ) -> List[Dict]:
     """Merge events from all sources, normalize, and deduplicate."""
     all_raw = []
-    
+
     if nyc_events:
         all_raw.extend(nyc_events)
         logger.info(f"Added {len(nyc_events)} NYC.gov events")
@@ -178,6 +179,9 @@ def consolidate_events(
     if timeout_events:
         all_raw.extend(timeout_events)
         logger.info(f"Added {len(timeout_events)} TimeOut NY events")
+    if amnh_events:
+        all_raw.extend(amnh_events)
+        logger.info(f"Added {len(amnh_events)} AMNH events")
     
     logger.info(f"Total raw events: {len(all_raw)}")
     
