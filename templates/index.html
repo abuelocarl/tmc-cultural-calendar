@@ -176,6 +176,37 @@
   {% endif %}
 </section>
 
+<!-- ── Museum Browse ── -->
+<section class="museums-section">
+  <div class="section-header">
+    <h2 class="section-title">Browse by <em>Museum</em></h2>
+    <a href="{{ url_for('dc_events') }}" class="see-all">DC Museums →</a>
+  </div>
+  <div class="museums-grid">
+    {% set museum_data = [
+      ("AMNH",         "🦕", "American Museum of Natural History",    "https://www.amnh.org/calendar"),
+      ("MoMA",         "🖼",  "Museum of Modern Art",                  "https://www.moma.org/calendar"),
+      ("Whitney",      "🎨", "Whitney Museum of American Art",         "https://whitney.org/events"),
+      ("MCNY",         "🗽", "Museum of the City of New York",         "https://www.mcny.org/events"),
+      ("New Museum",   "🏢", "New Museum",                             "https://www.newmuseum.org/calendar"),
+      ("NY Historical","📜", "New-York Historical Society",            "https://www.nyhistory.org/programs"),
+    ] %}
+    {% for source, icon, full_name, ext_url in museum_data %}
+    {% set count = meta.events | selectattr('source', 'equalto', source) | list | length %}
+    <a href="{{ url_for('event_list', source=source) }}" class="museum-card">
+      <div class="museum-card-icon">{{ icon }}</div>
+      <div class="museum-card-body">
+        <span class="museum-card-name">{{ source }}</span>
+        <span class="museum-card-full">{{ full_name }}</span>
+        <span class="museum-card-count">{{ count }} event{{ 's' if count != 1 else '' }}</span>
+      </div>
+      <a href="{{ ext_url }}" class="museum-card-ext" target="_blank" rel="noopener"
+         onclick="event.stopPropagation()" title="Visit {{ source }} website">↗</a>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
 <!-- ── Category Browse ── -->
 <section class="categories-section">
   <div class="section-header">
