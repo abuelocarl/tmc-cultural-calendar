@@ -3,7 +3,7 @@ TMC Cultural Calendar - Main Scraper Runner
 Run this script to scrape all sources and consolidate events.
 
 Usage:
-    python scrape.py                    # Scrape all sources (NYC + DC)
+    python scrape.py                    # Scrape all sources (NYC + DC + Paris)
     python scrape.py --source nyc       # Scrape only NYC.gov
     python scrape.py --source eventbrite
     python scrape.py --source timeout
@@ -21,6 +21,13 @@ Usage:
     python scrape.py --source nmaahc
     python scrape.py --source nbm
     python scrape.py --source spymuseum
+    python scrape.py --source paris     # All Paris museum scrapers
+    python scrape.py --source pompidou
+    python scrape.py --source louvre
+    python scrape.py --source orsay
+    python scrape.py --source palaisdetokyo
+    python scrape.py --source fondationlv
+    python scrape.py --source museepicasso
     python scrape.py --no-save          # Scrape but don't save
 """
 
@@ -46,6 +53,13 @@ from scrapers.nmnh_scraper import scrape_nmnh_events
 from scrapers.nmaahc_scraper import scrape_nmaahc_events
 from scrapers.nbm_scraper import scrape_nbm_events
 from scrapers.spymuseum_scraper import scrape_spymuseum_events
+# Paris scrapers
+from scrapers.pompidou_scraper import scrape_pompidou_events
+from scrapers.louvre_scraper import scrape_louvre_events
+from scrapers.orsay_scraper import scrape_orsay_events
+from scrapers.palaisdetokyo_scraper import scrape_palaisdetokyo_events
+from scrapers.fondationlv_scraper import scrape_fondationlv_events
+from scrapers.museepicasso_scraper import scrape_museepicasso_events
 from consolidator import consolidate_events, save_events, save_events_csv
 
 # Configure logging
@@ -62,6 +76,7 @@ logger = logging.getLogger("tmc-scraper")
 
 MUSEUM_SOURCES = {"amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory"}
 DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmaahc", "nbm", "spymuseum"}
+PARIS_SOURCES = {"pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso"}
 
 
 def run_scraper(source: str = "all", save: bool = True) -> dict:
@@ -86,6 +101,13 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         "nmaahc": 0,
         "nbm": 0,
         "spymuseum": 0,
+        # Paris
+        "pompidou": 0,
+        "louvre": 0,
+        "orsay": 0,
+        "palaisdetokyo": 0,
+        "fondationlv": 0,
+        "museepicasso": 0,
         "total": 0,
         "errors": [],
     }
@@ -105,10 +127,17 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
     nmaahc_events = []
     nbm_events = []
     spymuseum_events = []
+    pompidou_events = []
+    louvre_events = []
+    orsay_events = []
+    palaisdetokyo_events = []
+    fondationlv_events = []
+    museepicasso_events = []
 
     is_all = source == "all"
     is_museums = source == "museums"
     is_dc = source == "dc"
+    is_paris = source == "paris"
 
     # ── NYC.gov ─────────────────────────────────────────────────
     if is_all or source == "nyc":
@@ -290,6 +319,78 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
             logger.error(msg)
             results["errors"].append(msg)
 
+    # ── Centre Pompidou ──────────────────────────────────────────
+    if is_all or is_paris or source == "pompidou":
+        logger.info("🎨  Scraping Centre Pompidou events...")
+        try:
+            pompidou_events = scrape_pompidou_events()
+            results["pompidou"] = len(pompidou_events)
+            logger.info(f"  ✓ Pompidou: {len(pompidou_events)} events found")
+        except Exception as e:
+            msg = f"Pompidou scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── Louvre ───────────────────────────────────────────────────
+    if is_all or is_paris or source == "louvre":
+        logger.info("🏛  Scraping Louvre events...")
+        try:
+            louvre_events = scrape_louvre_events()
+            results["louvre"] = len(louvre_events)
+            logger.info(f"  ✓ Louvre: {len(louvre_events)} events found")
+        except Exception as e:
+            msg = f"Louvre scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── Musée d'Orsay ────────────────────────────────────────────
+    if is_all or is_paris or source == "orsay":
+        logger.info("🖼  Scraping Musée d'Orsay events...")
+        try:
+            orsay_events = scrape_orsay_events()
+            results["orsay"] = len(orsay_events)
+            logger.info(f"  ✓ Orsay: {len(orsay_events)} events found")
+        except Exception as e:
+            msg = f"Orsay scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── Palais de Tokyo ──────────────────────────────────────────
+    if is_all or is_paris or source == "palaisdetokyo":
+        logger.info("🏢  Scraping Palais de Tokyo events...")
+        try:
+            palaisdetokyo_events = scrape_palaisdetokyo_events()
+            results["palaisdetokyo"] = len(palaisdetokyo_events)
+            logger.info(f"  ✓ Palais de Tokyo: {len(palaisdetokyo_events)} events found")
+        except Exception as e:
+            msg = f"Palais de Tokyo scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── Fondation Louis Vuitton ──────────────────────────────────
+    if is_all or is_paris or source == "fondationlv":
+        logger.info("💎  Scraping Fondation Louis Vuitton events...")
+        try:
+            fondationlv_events = scrape_fondationlv_events()
+            results["fondationlv"] = len(fondationlv_events)
+            logger.info(f"  ✓ Fondation LV: {len(fondationlv_events)} events found")
+        except Exception as e:
+            msg = f"Fondation LV scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── Musée Picasso ────────────────────────────────────────────
+    if is_all or is_paris or source == "museepicasso":
+        logger.info("🎭  Scraping Musée Picasso events...")
+        try:
+            museepicasso_events = scrape_museepicasso_events()
+            results["museepicasso"] = len(museepicasso_events)
+            logger.info(f"  ✓ Musée Picasso: {len(museepicasso_events)} events found")
+        except Exception as e:
+            msg = f"Musée Picasso scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
     # ── Consolidate ─────────────────────────────────────────────
     logger.info("🔄  Consolidating events...")
     all_events = consolidate_events(
@@ -308,6 +409,12 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         nmaahc_events=nmaahc_events,
         nbm_events=nbm_events,
         spymuseum_events=spymuseum_events,
+        pompidou_events=pompidou_events,
+        louvre_events=louvre_events,
+        orsay_events=orsay_events,
+        palaisdetokyo_events=palaisdetokyo_events,
+        fondationlv_events=fondationlv_events,
+        museepicasso_events=museepicasso_events,
     )
     results["total"] = len(all_events)
 
@@ -343,6 +450,13 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         f"  NMAAHC:               {results['nmaahc']:>4} events\n"
         f"  Natl Building Museum: {results['nbm']:>4} events\n"
         f"  Spy Museum:           {results['spymuseum']:>4} events\n"
+        f"  ── Paris ──────────────────────────────\n"
+        f"  Pompidou:             {results['pompidou']:>4} events\n"
+        f"  Louvre:               {results['louvre']:>4} events\n"
+        f"  Musée d'Orsay:        {results['orsay']:>4} events\n"
+        f"  Palais de Tokyo:      {results['palaisdetokyo']:>4} events\n"
+        f"  Fondation LV:         {results['fondationlv']:>4} events\n"
+        f"  Musée Picasso:        {results['museepicasso']:>4} events\n"
         f"  ───────────────────────────────────────\n"
         f"  Total:                {results['total']:>4} unique events\n"
         f"  Duration:             {elapsed:.1f}s\n"
@@ -375,10 +489,11 @@ Examples:
     parser.add_argument(
         "--source",
         choices=[
-            "all", "museums", "dc",
+            "all", "museums", "dc", "paris",
             "nyc", "eventbrite", "timeout",
             "amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory",
             "nga", "hirshhorn", "nmnh", "nmaahc", "nbm", "spymuseum",
+            "pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso",
         ],
         default="all",
         help="Which source to scrape (default: all)",

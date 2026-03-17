@@ -45,6 +45,20 @@ DC_NEIGHBORHOODS = [
     "Southwest Waterfront",
 ]
 
+PARIS_ARRONDISSEMENTS = [
+    "1st Arrondissement",
+    "3rd Arrondissement",
+    "4th Arrondissement",
+    "5th Arrondissement",
+    "6th Arrondissement",
+    "7th Arrondissement",
+    "8th Arrondissement",
+    "9th Arrondissement",
+    "13th Arrondissement",
+    "16th Arrondissement",
+    "18th Arrondissement",
+]
+
 
 def normalize_date(date_str: str) -> str:
     """Normalize date strings to ISO format YYYY-MM-DD."""
@@ -196,6 +210,13 @@ def consolidate_events(
     nmaahc_events: List[Dict] = None,
     nbm_events: List[Dict] = None,
     spymuseum_events: List[Dict] = None,
+    # Paris sources
+    pompidou_events: List[Dict] = None,
+    louvre_events: List[Dict] = None,
+    orsay_events: List[Dict] = None,
+    palaisdetokyo_events: List[Dict] = None,
+    fondationlv_events: List[Dict] = None,
+    museepicasso_events: List[Dict] = None,
 ) -> List[Dict]:
     """Merge events from all sources, normalize, and deduplicate."""
     all_raw = []
@@ -217,6 +238,13 @@ def consolidate_events(
         ("NMAAHC", nmaahc_events),
         ("National Building Museum", nbm_events),
         ("Spy Museum", spymuseum_events),
+        # Paris
+        ("Pompidou", pompidou_events),
+        ("Louvre", louvre_events),
+        ("Musée d'Orsay", orsay_events),
+        ("Palais de Tokyo", palaisdetokyo_events),
+        ("Fondation Louis Vuitton", fondationlv_events),
+        ("Musée Picasso", museepicasso_events),
     ]:
         if batch:
             all_raw.extend(batch)
@@ -294,6 +322,26 @@ _NEIGHBORHOOD_MAP = {
     "u street":                 "U Street",
     "14th st nw":               "Logan Circle",
     "shaw":                     "Shaw",
+    # Paris
+    "place georges-pompidou":   "4th Arrondissement",
+    "centre pompidou":          "4th Arrondissement",
+    "rue de rivoli":            "1st Arrondissement",
+    "musée du louvre":          "1st Arrondissement",
+    "louvre":                   "1st Arrondissement",
+    "rue de la légion":         "7th Arrondissement",
+    "musée d'orsay":            "7th Arrondissement",
+    "avenue du président wilson": "16th Arrondissement",
+    "palais de tokyo":          "16th Arrondissement",
+    "avenue du mahatma gandhi": "16th Arrondissement",
+    "bois de boulogne":         "16th Arrondissement",
+    "fondation louis vuitton":  "16th Arrondissement",
+    "rue de thorigny":          "3rd Arrondissement",
+    "musée picasso":            "3rd Arrondissement",
+    "75001":                    "1st Arrondissement",
+    "75003":                    "3rd Arrondissement",
+    "75004":                    "4th Arrondissement",
+    "75007":                    "7th Arrondissement",
+    "75116":                    "16th Arrondissement",
 }
 
 # CSV column names exactly as in the TMC template (preserving spaces in flag columns)

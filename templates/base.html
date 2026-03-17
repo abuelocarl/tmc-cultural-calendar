@@ -29,6 +29,10 @@
            class="city-tab city-tab--dc {{ 'city-tab--active' if request.endpoint == 'dc_events' else '' }}">
           🏛 Washington DC
         </a>
+        <a href="{{ url_for('paris_events') }}"
+           class="city-tab city-tab--paris {{ 'city-tab--active' if request.endpoint == 'paris_events' else '' }}">
+          🗼 Paris
+        </a>
       </div>
       <ul class="nav-links">
         <li><a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">Home</a></li>
@@ -61,7 +65,7 @@
   <div id="scrape-overlay" class="scrape-overlay hidden">
     <div class="scrape-modal">
       <div class="scrape-spinner"></div>
-      <p class="scrape-status">Scraping NYC & DC museum calendars…</p>
+      <p class="scrape-status">Scraping NYC, DC & Paris museum calendars…</p>
       <p class="scrape-sub">This may take 15–30 seconds</p>
     </div>
   </div>
@@ -98,6 +102,12 @@
         <a href="https://www.nga.gov/whats-on.html" target="_blank" rel="noopener">Natl Gallery of Art</a>
         <a href="https://hirshhorn.si.edu/exhibitions/calendar/" target="_blank" rel="noopener">Hirshhorn</a>
         <a href="https://naturalhistory.si.edu/visit/events" target="_blank" rel="noopener">NMNH</a>
+      </div>
+      <div class="footer-links">
+        <h4>Paris Sources</h4>
+        <a href="https://www.centrepompidou.fr/en/agenda/" target="_blank" rel="noopener">Centre Pompidou</a>
+        <a href="https://www.louvre.fr/en/whats-on" target="_blank" rel="noopener">Louvre</a>
+        <a href="https://www.musee-orsay.fr/en/whats-on" target="_blank" rel="noopener">Musée d'Orsay</a>
         <a href="{{ url_for('api_events') }}" target="_blank">API</a>
       </div>
       <div class="footer-stats" id="footer-stats">

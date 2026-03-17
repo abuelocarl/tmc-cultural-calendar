@@ -280,10 +280,20 @@ input, select, textarea { font-family: inherit; }
 .hero--dc .hero-eyebrow { color: var(--crimson-soft); }
 .hero--dc .hero-stat-num { color: var(--crimson-soft); }
 
+/* Paris hero variant */
+.hero--paris { background: linear-gradient(135deg, #0a0f1e 0%, #101a3a 40%, #1a0a2a 100%); }
+.hero--paris .hero-eyebrow { color: #8aaae0; }
+.hero--paris .hero-stat-num { color: #8aaae0; }
+
+/* Paris city tab */
+.city-tab--paris.city-tab--active { background: #2c4a8a !important; color: #fff !important; }
+
+/* Hero city links row */
+.hero-city-links { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; }
+
 /* Hero city link */
 .hero-city-link {
   display: inline-block;
-  margin-top: 1.5rem;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.1em;
@@ -296,6 +306,8 @@ input, select, textarea { font-family: inherit; }
 }
 .hero-city-link:hover { color: var(--gold); border-color: var(--gold); }
 .hero-city-link strong { color: var(--crimson-soft); }
+.hero-city-link--paris strong { color: #8aaae0; }
+.hero-city-link--paris:hover strong { color: var(--gold); }
 
 /* Borough cards with icon */
 .borough-card { position: relative; display: flex; flex-direction: column; gap: 0.25rem; }

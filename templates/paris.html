@@ -2,39 +2,30 @@
 {% block content %}
 
 <!-- ── Hero ── -->
-<section class="hero">
+<section class="hero hero--paris">
   <div class="hero-bg-grid"></div>
   <div class="hero-content">
-    <div class="hero-eyebrow">New York City</div>
+    <div class="hero-eyebrow">Paris, France</div>
     <h1 class="hero-title">
       <span class="hero-title-line1">Cultural</span>
       <span class="hero-title-line2">Calendar</span>
     </h1>
-    <p class="hero-sub">Arts · Music · Theater · Festivals · Community · Heritage</p>
+    <p class="hero-sub">Art · Museums · History · Performance · Cinema · Design</p>
     <div class="hero-stats">
-      {% set nyc_events = meta.events | selectattr('city', 'equalto', 'New York') | list %}
       <div class="hero-stat">
-        <span class="hero-stat-num">{{ nyc_events|length }}</span>
-        <span class="hero-stat-label">NYC Events</span>
+        <span class="hero-stat-num">{{ total }}</span>
+        <span class="hero-stat-label">Events</span>
       </div>
       <div class="hero-stat-divider"></div>
       <div class="hero-stat">
-        <span class="hero-stat-num">{{ meta.sources|length }}</span>
-        <span class="hero-stat-label">Sources</span>
+        <span class="hero-stat-num">{{ paris_sources|length }}</span>
+        <span class="hero-stat-label">Institutions</span>
       </div>
       <div class="hero-stat-divider"></div>
       <div class="hero-stat">
-        <span class="hero-stat-num">5</span>
-        <span class="hero-stat-label">Boroughs</span>
+        <span class="hero-stat-num">{{ paris_arrondissements|length }}</span>
+        <span class="hero-stat-label">Arrondissements</span>
       </div>
-    </div>
-    <div class="hero-city-links">
-      <a href="{{ url_for('dc_events') }}" class="hero-city-link">
-        Also in <strong>Washington DC</strong> →
-      </a>
-      <a href="{{ url_for('paris_events') }}" class="hero-city-link hero-city-link--paris">
-        Also in <strong>Paris</strong> 🗼 →
-      </a>
     </div>
   </div>
   <div class="hero-scroll">Scroll to explore ↓</div>
@@ -42,32 +33,34 @@
 
 <!-- ── Search Bar ── -->
 <section class="search-section">
-  <form class="search-form" action="{{ url_for('event_list') }}" method="get">
+  <form class="search-form" action="{{ url_for('paris_events') }}" method="get">
     <div class="search-bar">
-      <input type="text" name="q" placeholder="Search events, venues, categories…" value="{{ params.get('q','') }}" class="search-input" />
+      <input type="text" name="q" placeholder="Search Paris events, museums, exhibitions…"
+             value="{{ params.get('q','') }}" class="search-input" />
       <button type="submit" class="search-btn">Search</button>
     </div>
     <div class="search-filters">
       <select name="category" class="filter-select">
         <option value="">All Categories</option>
-        {% for cat in meta.categories %}
+        {% for cat in meta.all_categories %}
           <option value="{{ cat }}" {{ 'selected' if params.get('category') == cat else '' }}>{{ cat }}</option>
         {% endfor %}
       </select>
       <select name="borough" class="filter-select">
-        <option value="">All Boroughs</option>
-        {% for b in meta.boroughs %}
-          <option value="{{ b }}" {{ 'selected' if params.get('borough') == b else '' }}>{{ b }}</option>
+        <option value="">All Arrondissements</option>
+        {% for a in paris_arrondissements %}
+          <option value="{{ a }}" {{ 'selected' if params.get('borough') == a else '' }}>{{ a }}</option>
         {% endfor %}
       </select>
       <select name="source" class="filter-select">
-        <option value="">All Sources</option>
-        {% for s in meta.sources %}
+        <option value="">All Institutions</option>
+        {% for s in paris_sources %}
           <option value="{{ s }}" {{ 'selected' if params.get('source') == s else '' }}>{{ s }}</option>
         {% endfor %}
       </select>
       <label class="filter-check">
-        <input type="checkbox" name="free_only" value="1" {{ 'checked' if params.get('free_only') == '1' else '' }}>
+        <input type="checkbox" name="free_only" value="1"
+               {{ 'checked' if params.get('free_only') == '1' else '' }}>
         Free Only
       </label>
     </div>
@@ -78,13 +71,14 @@
 {% if featured %}
 <section class="featured-section">
   <div class="section-header">
-    <h2 class="section-title">Featured <em>Events</em></h2>
-    <a href="{{ url_for('event_list') }}" class="see-all">View all →</a>
+    <h2 class="section-title">Featured <em>Paris Events</em></h2>
+    <a href="{{ url_for('paris_events') }}" class="see-all">View all →</a>
   </div>
   <div class="featured-grid">
     {% for event in featured[:3] %}
     <article class="featured-card {% if loop.first %}featured-card--large{% endif %}">
-      <div class="featured-card-bg" style="{{ 'background-image: url(' + event.image_url + ')' if event.image_url else '' }}"></div>
+      <div class="featured-card-bg"
+           style="{{ 'background-image: url(' + event.image_url + ')' if event.image_url else '' }}"></div>
       <div class="featured-card-overlay"></div>
       <div class="featured-card-body">
         <div class="featured-card-meta">
@@ -97,7 +91,7 @@
         </h3>
         <div class="featured-card-info">
           {% if event.date %}<span class="event-date">📅 {{ event.date }}</span>{% endif %}
-          {% if event.location %}<span class="event-loc">📍 {{ event.location[:40] }}</span>{% endif %}
+          {% if event.location %}<span class="event-loc">📍 {{ event.location[:45] }}</span>{% endif %}
         </div>
       </div>
     </article>
@@ -106,16 +100,16 @@
 </section>
 {% endif %}
 
-<!-- ── Upcoming Events ── -->
+<!-- ── Upcoming Paris Events ── -->
 <section class="events-section">
   <div class="section-header">
     <h2 class="section-title">Upcoming <em>Events</em></h2>
-    <a href="{{ url_for('event_list') }}" class="see-all">View all {{ meta.total }} →</a>
+    <a href="{{ url_for('paris_events') }}" class="see-all">View all {{ total }} →</a>
   </div>
 
   {% if events %}
-  <div class="events-grid">
-    {% for event in events[:24] %}
+  <div class="events-grid" id="events-container">
+    {% for event in events %}
     <article class="event-card">
       <div class="event-card-header">
         <div class="event-card-tags">
@@ -165,18 +159,33 @@
     {% endfor %}
   </div>
 
-  {% if events|length > 24 %}
-  <div class="load-more-container">
-    <a href="{{ url_for('event_list') }}" class="load-more-btn">View All {{ meta.total }} Events →</a>
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+    <a href="{{ url_for('paris_events', **dict(params, page=page-1)) }}" class="page-btn">← Prev</a>
+    {% endif %}
+    {% for p in range(1, total_pages + 1) %}
+      {% if p == page %}
+        <span class="page-btn page-btn-active">{{ p }}</span>
+      {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+        <a href="{{ url_for('paris_events', **dict(params, page=p)) }}" class="page-btn">{{ p }}</a>
+      {% elif p == 4 or p == total_pages - 3 %}
+        <span class="page-dots">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="{{ url_for('paris_events', **dict(params, page=page+1)) }}" class="page-btn">Next →</a>
+    {% endif %}
   </div>
   {% endif %}
 
   {% else %}
   <div class="empty-state">
-    <div class="empty-icon">🎭</div>
-    <h3>No events found</h3>
-    <p>Try adjusting your filters or run a fresh scrape to pull the latest events.</p>
-    <button onclick="triggerScrape()" class="btn-primary">Scrape Events Now</button>
+    <div class="empty-icon">🗼</div>
+    <h3>No Paris events found yet</h3>
+    <p>Run a scrape to pull the latest events from Paris cultural institutions.</p>
+    <button onclick="triggerScrape('paris')" class="btn-primary">Scrape Paris Events Now</button>
   </div>
   {% endif %}
 </section>
@@ -184,21 +193,20 @@
 <!-- ── Museum Browse ── -->
 <section class="museums-section">
   <div class="section-header">
-    <h2 class="section-title">Browse by <em>Museum</em></h2>
-    <a href="{{ url_for('dc_events') }}" class="see-all">DC Museums →</a>
+    <h2 class="section-title">Browse by <em>Institution</em></h2>
   </div>
   <div class="museums-grid">
     {% set museum_data = [
-      ("AMNH",         "🦕", "American Museum of Natural History",    "https://www.amnh.org/calendar"),
-      ("MoMA",         "🖼",  "Museum of Modern Art",                  "https://www.moma.org/calendar"),
-      ("Whitney",      "🎨", "Whitney Museum of American Art",         "https://whitney.org/events"),
-      ("MCNY",         "🗽", "Museum of the City of New York",         "https://www.mcny.org/events"),
-      ("New Museum",   "🏢", "New Museum",                             "https://www.newmuseum.org/calendar"),
-      ("NY Historical","📜", "New-York Historical Society",            "https://www.nyhistory.org/programs"),
+      ("Pompidou",               "🎨", "Centre Pompidou",           "https://www.centrepompidou.fr/en/agenda/"),
+      ("Louvre",                 "🏛", "Musée du Louvre",            "https://www.louvre.fr/en/whats-on"),
+      ("Musée d'Orsay",          "🖼", "Musée d'Orsay",              "https://www.musee-orsay.fr/en/whats-on"),
+      ("Palais de Tokyo",        "🏢", "Palais de Tokyo",            "https://palaisdetokyo.com/en/agenda/"),
+      ("Fondation Louis Vuitton","💎", "Fondation Louis Vuitton",    "https://www.fondationlouisvuitton.fr/en/agenda.html"),
+      ("Musée Picasso",          "🎭", "Musée Picasso Paris",        "https://www.museepicassoparis.fr/en/agenda"),
     ] %}
     {% for source, icon, full_name, ext_url in museum_data %}
     {% set count = meta.events | selectattr('source', 'equalto', source) | list | length %}
-    <a href="{{ url_for('event_list', source=source) }}" class="museum-card">
+    <a href="{{ url_for('paris_events', source=source) }}" class="museum-card">
       <div class="museum-card-icon">{{ icon }}</div>
       <div class="museum-card-body">
         <span class="museum-card-name">{{ source }}</span>
@@ -212,48 +220,37 @@
   </div>
 </section>
 
-<!-- ── Category Browse ── -->
-<section class="categories-section">
-  <div class="section-header">
-    <h2 class="section-title">Browse by <em>Category</em></h2>
-  </div>
-  <div class="categories-grid">
-    {% set cat_icons = {
-      "Arts & Culture": "🎨",
-      "Music": "🎵",
-      "Theater": "🎭",
-      "Dance": "💃",
-      "Festivals": "🎉",
-      "Parks & Recreation": "🌿",
-      "Heritage & History": "🏛",
-      "Community": "🤝",
-      "Weekend Picks": "⭐",
-      "Other": "📌"
-    } %}
-    {% for cat in meta.categories %}
-    <a href="{{ url_for('event_list', category=cat) }}" class="category-card">
-      <span class="category-icon">{{ cat_icons.get(cat, "📌") }}</span>
-      <span class="category-name">{{ cat }}</span>
-      <span class="category-count">{{ meta.events | selectattr('category', 'equalto', cat) | list | length }}</span>
-    </a>
-    {% endfor %}
-  </div>
-</section>
-
-<!-- ── Borough Map ── -->
+<!-- ── Arrondissement Browse ── -->
+{% if paris_arrondissements %}
 <section class="boroughs-section">
   <div class="section-header">
-    <h2 class="section-title">Explore by <em>Borough</em></h2>
+    <h2 class="section-title">Browse by <em>Arrondissement</em></h2>
   </div>
   <div class="boroughs-grid">
-    {% for borough in ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"] %}
-    {% set count = meta.events | selectattr('borough', 'equalto', borough) | list | length %}
-    <a href="{{ url_for('event_list', borough=borough) }}" class="borough-card">
-      <span class="borough-name">{{ borough }}</span>
+    {% for arr in paris_arrondissements %}
+    {% set count = meta.events | selectattr('borough', 'equalto', arr) | list | length %}
+    <a href="{{ url_for('paris_events', borough=arr) }}" class="borough-card">
+      <span class="borough-name">{{ arr }}</span>
       <span class="borough-count">{{ count }} event{{ 's' if count != 1 else '' }}</span>
     </a>
     {% endfor %}
   </div>
 </section>
+{% endif %}
 
+{% endblock %}
+{% block scripts %}
+<script>
+function setView(mode) {
+  const container = document.getElementById('events-container');
+  if (!container) return;
+  if (mode === 'list') {
+    container.classList.remove('events-grid');
+    container.classList.add('events-list-view');
+  } else {
+    container.classList.add('events-grid');
+    container.classList.remove('events-list-view');
+  }
+}
+</script>
 {% endblock %}

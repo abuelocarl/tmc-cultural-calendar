@@ -28,6 +28,7 @@ from consolidator import (
     CATEGORIES,
     BOROUGHS,
     DC_NEIGHBORHOODS,
+    PARIS_ARRONDISSEMENTS,
 )
 
 # ── App Setup ────────────────────────────────────────────────────────────────
@@ -231,6 +232,48 @@ def dc_events():
         total_pages=(total + per_page - 1) // per_page,
         today=today,
         title="Washington DC Events | TMC Cultural Calendar",
+    )
+
+
+@app.route("/paris")
+def paris_events():
+    meta = get_events_metadata()
+    params = request.args.to_dict()
+    params["city"] = "Paris"   # always pin to Paris
+    filtered = filter_events(meta["events"], params)
+
+    today = date.today().isoformat()
+    upcoming = [e for e in filtered if e.get("date", "") >= today or not e.get("date")]
+
+    featured = [e for e in upcoming if e.get("is_featured")][:6]
+    if len(featured) < 3:
+        featured = upcoming[:6]
+
+    paris_sources = sorted(set(e.get("source", "") for e in filtered))
+    paris_arrondissements = sorted(set(e.get("borough", "") for e in filtered if e.get("borough")))
+
+    # Pagination
+    page = int(params.get("page", 1))
+    per_page = 24
+    total = len(upcoming)
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated = upcoming[start:end]
+
+    return render_template(
+        "paris.html",
+        events=paginated,
+        featured=featured,
+        params={k: v for k, v in params.items() if k != "city"},
+        meta=meta,
+        paris_sources=paris_sources,
+        paris_arrondissements=paris_arrondissements,
+        page=page,
+        per_page=per_page,
+        total=total,
+        total_pages=(total + per_page - 1) // per_page,
+        today=today,
+        title="Paris Events | TMC Cultural Calendar",
     )
 
 
