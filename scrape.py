@@ -357,25 +357,25 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
 
     # ── Palais de Tokyo ──────────────────────────────────────────
     if is_all or is_paris or source == "palaisdetokyo":
-        logger.info("🏢  Scraping Palais de Tokyo events...")
+        logger.info("🎞  Scraping Jeu de Paume events...")
         try:
             palaisdetokyo_events = scrape_palaisdetokyo_events()
             results["palaisdetokyo"] = len(palaisdetokyo_events)
-            logger.info(f"  ✓ Palais de Tokyo: {len(palaisdetokyo_events)} events found")
+            logger.info(f"  ✓ Jeu de Paume: {len(palaisdetokyo_events)} events found")
         except Exception as e:
-            msg = f"Palais de Tokyo scraper failed: {e}"
+            msg = f"Jeu de Paume scraper failed: {e}"
             logger.error(msg)
             results["errors"].append(msg)
 
     # ── Fondation Louis Vuitton ──────────────────────────────────
     if is_all or is_paris or source == "fondationlv":
-        logger.info("💎  Scraping Fondation Louis Vuitton events...")
+        logger.info("🌸  Scraping Musée de l'Orangerie events...")
         try:
             fondationlv_events = scrape_fondationlv_events()
             results["fondationlv"] = len(fondationlv_events)
-            logger.info(f"  ✓ Fondation LV: {len(fondationlv_events)} events found")
+            logger.info(f"  ✓ Orangerie: {len(fondationlv_events)} events found")
         except Exception as e:
-            msg = f"Fondation LV scraper failed: {e}"
+            msg = f"Orangerie scraper failed: {e}"
             logger.error(msg)
             results["errors"].append(msg)
 

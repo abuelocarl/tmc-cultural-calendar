@@ -1,16 +1,23 @@
 """
-Palais de Tokyo — Paris, France
-Events: https://palaisdetokyo.com/en/agenda/
+Jeu de Paume — Paris, France (8th Arrondissement)
+Agenda: https://jeudepaume.org/agenda/
 
-Actual HTML uses WordPress/custom theme structure:
-<article class="post-type-event ...">
-  <a href="...">
-    <div class="post-content">
-      <h2 class="post-title">...</h2>
-      <div class="post-date">...</div>
-    </div>
-  </a>
-</article>
+Real HTML structure:
+<section class="agenda-grouped-events wrapper" id="agenda-events-container">
+  <div class="agenda-date-group">
+    <div class="agenda-date-header"><h3>17 mars 2026</h3></div>
+    <ul class="agenda-events-grid-3cols">
+      <li class="grid-item to-animate">
+        <a class="tease e item" href="https://jeudepaume.org/evenement/...">
+          <figure class="e__figure"><img src="..." /></figure>
+          <div class="group-tags"><p class="e__tag">Rencontre librairie</p></div>
+          <h3 class="e__title">Avec Florence Chevallier</h3>
+          <p class="e__text">Mardi 17 mars 2026 • 18:00<br><span class="--place">Jeu de Paume - Paris</span></p>
+        </a>
+      </li>
+    </ul>
+  </div>
+</section>
 """
 
 import logging
@@ -22,13 +29,9 @@ from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
-PALAISDETOKYO_URLS = [
-    "https://palaisdetokyo.com/en/agenda/",
-    "https://palaisdetokyo.com/en/events/",
-]
-PALAISDETOKYO_BASE = "https://palaisdetokyo.com"
-LOCATION = "Palais de Tokyo, 13 Avenue du Président Wilson, 75116 Paris, France"
-ARRONDISSEMENT = "16th Arrondissement"
+JEUDEPAUME_URL = "https://jeudepaume.org/agenda/"
+LOCATION = "Jeu de Paume, 1 Place de la Concorde, 75008 Paris, France"
+ARRONDISSEMENT = "8th Arrondissement"
 
 HEADERS = {
     "User-Agent": (
@@ -36,47 +39,76 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Language": "fr-FR,fr;q=0.9",
+}
+
+MONTHS_FR = {
+    "janvier": 1, "janv": 1, "jan": 1,
+    "février": 2, "févr": 2, "fév": 2,
+    "mars": 3,
+    "avril": 4, "avr": 4,
+    "mai": 5,
+    "juin": 6,
+    "juillet": 7, "juil": 7,
+    "août": 8, "aout": 8,
+    "septembre": 9, "sept": 9, "sep": 9,
+    "octobre": 10, "oct": 10,
+    "novembre": 11, "nov": 11,
+    "décembre": 12, "déc": 12, "dec": 12,
 }
 
 CATEGORY_MAP = {
+    "exposition": "Arts & Culture",
     "exhibition": "Arts & Culture",
+    "conférence": "Heritage & History",
+    "rencontre": "Heritage & History",
+    "lecture": "Heritage & History",
     "performance": "Arts & Culture",
+    "spectacle": "Arts & Culture",
     "concert": "Music",
-    "workshop": "Community",
-    "talk": "Heritage & History",
-    "conference": "Heritage & History",
     "film": "Arts & Culture",
+    "atelier": "Community",
+    "workshop": "Community",
     "festival": "Festivals",
-    "opening": "Arts & Culture",
+    "événement": "Arts & Culture",
 }
 
 
-def _parse_date(text: str) -> str:
+def _parse_fr_date(text: str):
+    """Parse 'Mardi 17 mars 2026 • 18:00' → ('2026-03-17', '18:00')."""
     if not text:
-        return ""
-    iso = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
-    if iso:
-        return iso.group(1)
-    date_match = re.search(
-        r"(\d{1,2})\s+(January|February|March|April|May|June|July|August|"
-        r"September|October|November|December)\s*(\d{4})?", text, re.I
+        return "", ""
+    # Time
+    time_m = re.search(r"•\s*(\d{1,2}:\d{2})", text)
+    time_str = time_m.group(1) if time_m else ""
+    # Date
+    m = re.search(
+        r"(\d{1,2})\s+(janv?(?:ier)?|f[eé]v(?:r(?:ier)?)?|mars?|avr(?:il)?|mai|juin?|"
+        r"juil(?:let)?|ao[uû]t?|sept?(?:embre)?|oct(?:obre)?|nov(?:embre)?|d[eé]c(?:embre)?)"
+        r"(?:\s+(\d{4}))?",
+        text, re.I
     )
-    if date_match:
-        day = int(date_match.group(1))
-        year_s = date_match.group(3)
-        year = int(year_s) if year_s else datetime.now().year
-        try:
-            return datetime.strptime(
-                f"{day} {date_match.group(2)} {year}", "%d %B %Y"
-            ).strftime("%Y-%m-%d")
-        except ValueError:
-            pass
-    return ""
+    if m:
+        day = int(m.group(1))
+        month_key = m.group(2).lower().rstrip(".")
+        month_num = MONTHS_FR.get(month_key, 0)
+        if not month_num:
+            for k in MONTHS_FR:
+                if month_key.startswith(k):
+                    month_num = MONTHS_FR[k]
+                    break
+        year_m = re.search(r"\b(20\d{2})\b", text)
+        year = int(year_m.group(1)) if year_m else datetime.now().year
+        if month_num:
+            try:
+                return datetime(year, month_num, day).strftime("%Y-%m-%d"), time_str
+            except ValueError:
+                pass
+    return "", time_str
 
 
-def _infer_category(title: str, desc: str) -> str:
-    combined = (title + " " + desc).lower()
+def _infer_category(tag_text: str, title: str) -> str:
+    combined = (tag_text + " " + title).lower()
     for keyword, cat in CATEGORY_MAP.items():
         if keyword in combined:
             return cat
@@ -84,96 +116,71 @@ def _infer_category(title: str, desc: str) -> str:
 
 
 def scrape_palaisdetokyo_events() -> List[Dict]:
-    """Scrape events from Palais de Tokyo."""
+    """Scrape events from Jeu de Paume (replaces the JS-blocked Palais de Tokyo)."""
     events = []
     seen_urls = set()
 
     try:
-        soup = None
-        for url in PALAISDETOKYO_URLS:
-            try:
-                resp = requests.get(url, headers=HEADERS, timeout=20)
-                if resp.status_code == 200:
-                    soup = BeautifulSoup(resp.text, "html.parser")
-                    break
-            except Exception as e:
-                logger.debug(f"Palais de Tokyo: {url} failed: {e}")
+        resp = requests.get(JEUDEPAUME_URL, headers=HEADERS, timeout=20)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-        if not soup:
-            logger.warning("Palais de Tokyo: could not load agenda page")
-            return events
-
-        selectors = [
-            "article.post-type-event", ".event-card", ".event-item",
-            "[class*='event']", "[class*='agenda']", "article",
-        ]
-
-        cards = []
-        for sel in selectors:
-            found = soup.select(sel)
-            if found and len(found) > 1:
-                cards = found
-                break
+        # Cards are <a class="tease e item"> inside the agenda container
+        cards = soup.select("a.tease.e.item, a[class*='tease'][class*='item']")
+        logger.info(f"Jeu de Paume: found {len(cards)} event cards")
 
         for card in cards[:40]:
             try:
-                title_el = (
-                    card.select_one(".post-title,[class*='title'],[class*='heading']")
-                    or card.find(["h2", "h3", "h4"])
-                )
+                title_el = card.select_one("h3.e__title, h2.e__title, [class*='title']")
                 if not title_el:
                     continue
                 title = title_el.get_text(strip=True)
                 if not title or len(title) < 3:
                     continue
 
-                link = card.find("a", href=True)
-                url = ""
-                if link:
-                    href = link["href"]
-                    url = href if href.startswith("http") else PALAISDETOKYO_BASE + href
+                url = card.get("href", "")
+                if not url.startswith("http"):
+                    url = "https://jeudepaume.org" + url
                 if url in seen_urls:
                     continue
                 if url:
                     seen_urls.add(url)
 
-                date_el = (
-                    card.find("time")
-                    or card.select_one(".post-date,[class*='date']")
-                )
-                date_str = ""
-                if date_el:
-                    raw = date_el.get("datetime") or date_el.get_text(strip=True)
-                    date_str = _parse_date(raw)
+                # Date + time from p.e__text
+                text_el = card.select_one("p.e__text, [class*='e__text']")
+                date_str, time_str = _parse_fr_date(text_el.get_text(strip=True)) if text_el else ("", "")
 
-                desc_el = card.select_one("[class*='desc'],[class*='summary'],p")
-                description = desc_el.get_text(strip=True) if desc_el else ""
+                # Category from p.e__tag
+                tags = [t.get_text(strip=True) for t in card.select("p.e__tag")]
+                tag_text = " ".join(tags)
 
+                # Description from p.e__subtitle
+                desc_el = card.select_one("p.e__subtitle, p.e__desc, [class*='subtitle']")
+                description = desc_el.get_text(strip=True) if desc_el else tag_text
+
+                # Image
                 img = card.find("img")
-                image_url = ""
-                if img:
-                    src = img.get("src") or img.get("data-src") or img.get("data-lazy-src") or ""
-                    image_url = src if src.startswith("http") else (PALAISDETOKYO_BASE + src if src else "")
+                image_url = img.get("src", "") if img else ""
 
                 events.append({
                     "title": title,
                     "date": date_str,
-                    "time": "",
+                    "time": time_str,
                     "location": LOCATION,
                     "description": description[:400],
                     "url": url,
-                    "category": _infer_category(title, description),
-                    "source": "Palais de Tokyo",
+                    "category": _infer_category(tag_text, title),
+                    "source": "Jeu de Paume",
                     "borough": ARRONDISSEMENT,
                     "image_url": image_url,
                     "price": "See website",
                     "city": "Paris",
                 })
             except Exception as e:
-                logger.debug(f"Palais de Tokyo: error parsing card: {e}")
+                logger.debug(f"Jeu de Paume: error parsing card: {e}")
 
     except Exception as e:
-        logger.error(f"Palais de Tokyo scraper failed: {e}")
+        logger.error(f"Jeu de Paume scraper failed: {e}")
 
-    logger.info(f"Palais de Tokyo: scraped {len(events)} events")
+    logger.info(f"Jeu de Paume: scraped {len(events)} events")
     return events

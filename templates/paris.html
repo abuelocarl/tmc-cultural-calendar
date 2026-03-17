@@ -197,12 +197,12 @@
   </div>
   <div class="museums-grid">
     {% set museum_data = [
-      ("Pompidou",               "🎨", "Centre Pompidou",           "https://www.centrepompidou.fr/en/agenda/"),
-      ("Louvre",                 "🏛", "Musée du Louvre",            "https://www.louvre.fr/en/whats-on"),
-      ("Musée d'Orsay",          "🖼", "Musée d'Orsay",              "https://www.musee-orsay.fr/en/whats-on"),
-      ("Palais de Tokyo",        "🏢", "Palais de Tokyo",            "https://palaisdetokyo.com/en/agenda/"),
-      ("Fondation Louis Vuitton","💎", "Fondation Louis Vuitton",    "https://www.fondationlouisvuitton.fr/en/agenda.html"),
-      ("Musée Picasso",          "🎭", "Musée Picasso Paris",        "https://www.museepicassoparis.fr/en/agenda"),
+      ("Pompidou",                "🎨", "Centre Pompidou",            "https://www.centrepompidou.fr/fr/programme/agenda"),
+      ("Louvre",                  "🏛", "Musée du Louvre",             "https://www.louvre.fr/expositions-et-evenements/evenements-activites"),
+      ("Musée d'Orsay",           "🖼", "Musée d'Orsay",               "https://www.musee-orsay.fr/fr/au-programme"),
+      ("Jeu de Paume",            "📷", "Jeu de Paume",                "https://jeudepaume.org/agenda/"),
+      ("Musée de l'Orangerie",    "🌸", "Musée de l'Orangerie",        "https://www.musee-orangerie.fr/fr/agenda"),
+      ("Musée Picasso",           "🎭", "Musée Picasso Paris",         "https://www.museepicassoparis.fr/fr/agenda"),
     ] %}
     {% for source, icon, full_name, ext_url in museum_data %}
     {% set count = meta.events | selectattr('source', 'equalto', source) | list | length %}

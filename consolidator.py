@@ -242,8 +242,8 @@ def consolidate_events(
         ("Pompidou", pompidou_events),
         ("Louvre", louvre_events),
         ("Musée d'Orsay", orsay_events),
-        ("Palais de Tokyo", palaisdetokyo_events),
-        ("Fondation Louis Vuitton", fondationlv_events),
+        ("Jeu de Paume", palaisdetokyo_events),
+        ("Musée de l'Orangerie", fondationlv_events),
         ("Musée Picasso", museepicasso_events),
     ]:
         if batch:
@@ -335,6 +335,10 @@ _NEIGHBORHOOD_MAP = {
     "avenue du mahatma gandhi": "16th Arrondissement",
     "bois de boulogne":         "16th Arrondissement",
     "fondation louis vuitton":  "16th Arrondissement",
+    "place de la concorde":     "8th Arrondissement",
+    "jeu de paume":             "8th Arrondissement",
+    "jardin des tuileries":     "1st Arrondissement",
+    "orangerie":                "1st Arrondissement",
     "rue de thorigny":          "3rd Arrondissement",
     "musée picasso":            "3rd Arrondissement",
     "75001":                    "1st Arrondissement",

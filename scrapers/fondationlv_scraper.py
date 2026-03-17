@@ -1,66 +1,72 @@
 """
-Fondation Louis Vuitton — Paris, France
-Events: https://www.fondationlouisvuitton.fr/en/agenda.html
+Musée de l'Orangerie — Paris, France (1st Arrondissement)
+Agenda: https://www.musee-orangerie.fr/fr/agenda
 
-Uses cloudscraper; gracefully handles JS-heavy pages.
+Real HTML structure:
+<article class="node node--type-mediation-event ... node-agenda-list">
+  <div class="image-container">
+    <a href="/fr/programme/agenda/..."><figure><img src="..." /></figure></a>
+  </div>
+  <div class="event-content">
+    <div class="event-type">
+      <div class="field__item">Visites et activités adultes</div>
+    </div>
+    <h4>
+      <a href="/fr/programme/agenda/...">
+        <span class="field--name-title">English Guided Tour • ...</span>
+      </a>
+    </h4>
+    <div class="event-informations">
+      <div class="hours">à 11h00</div>
+    </div>
+  </div>
+</article>
+
+Note: fondationlv_scraper.py file now scrapes Musée de l'Orangerie.
+Fondation Louis Vuitton blocks all automated requests (403).
 """
 
 import logging
 import re
-import cloudscraper
+import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
-FLV_URLS = [
-    "https://www.fondationlouisvuitton.fr/en/agenda.html",
-    "https://www.fondationlouisvuitton.fr/en/exhibitions-and-events.html",
-]
-FLV_BASE = "https://www.fondationlouisvuitton.fr"
-LOCATION = "Fondation Louis Vuitton, 8 Avenue du Mahatma Gandhi, Bois de Boulogne, 75116 Paris, France"
-ARRONDISSEMENT = "16th Arrondissement"
+ORANGERIE_URL = "https://www.musee-orangerie.fr/fr/agenda"
+ORANGERIE_BASE = "https://www.musee-orangerie.fr"
+LOCATION = "Musée de l'Orangerie, Jardin des Tuileries, 75001 Paris, France"
+ARRONDISSEMENT = "1st Arrondissement"
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "fr-FR,fr;q=0.9",
+}
 
 CATEGORY_MAP = {
-    "exhibition": "Arts & Culture",
+    "visite": "Heritage & History",
+    "tour": "Heritage & History",
+    "conférence": "Heritage & History",
+    "lecture": "Heritage & History",
+    "atelier": "Community",
+    "workshop": "Community",
+    "famille": "Community",
+    "enfant": "Community",
     "exposition": "Arts & Culture",
     "concert": "Music",
-    "performance": "Arts & Culture",
-    "conference": "Heritage & History",
-    "talk": "Heritage & History",
-    "workshop": "Community",
     "film": "Arts & Culture",
-    "festival": "Festivals",
-    "opening": "Arts & Culture",
+    "spectacle": "Arts & Culture",
 }
 
 
-def _parse_date(text: str) -> str:
-    if not text:
-        return ""
-    iso = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
-    if iso:
-        return iso.group(1)
-    date_match = re.search(
-        r"(\d{1,2})\s+(January|February|March|April|May|June|July|August|"
-        r"September|October|November|December)\s*(\d{4})?", text, re.I
-    )
-    if date_match:
-        day = int(date_match.group(1))
-        year_s = date_match.group(3)
-        year = int(year_s) if year_s else datetime.now().year
-        try:
-            return datetime.strptime(
-                f"{day} {date_match.group(2)} {year}", "%d %B %Y"
-            ).strftime("%Y-%m-%d")
-        except ValueError:
-            pass
-    return ""
-
-
-def _infer_category(title: str, desc: str) -> str:
-    combined = (title + " " + desc).lower()
+def _infer_category(type_text: str, title: str) -> str:
+    combined = (type_text + " " + title).lower()
     for keyword, cat in CATEGORY_MAP.items():
         if keyword in combined:
             return cat
@@ -68,46 +74,24 @@ def _infer_category(title: str, desc: str) -> str:
 
 
 def scrape_fondationlv_events() -> List[Dict]:
-    """Scrape events from Fondation Louis Vuitton."""
+    """Scrape events from Musée de l'Orangerie (French agenda page)."""
     events = []
     seen_urls = set()
 
     try:
-        scraper = cloudscraper.create_scraper(
-            browser={"browser": "chrome", "platform": "darwin", "mobile": False}
-        )
+        resp = requests.get(ORANGERIE_URL, headers=HEADERS, timeout=20)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-        soup = None
-        for url in FLV_URLS:
-            try:
-                resp = scraper.get(url, timeout=20)
-                if resp.status_code == 200:
-                    soup = BeautifulSoup(resp.text, "html.parser")
-                    break
-            except Exception as e:
-                logger.debug(f"Fondation LV: {url} failed: {e}")
-
-        if not soup:
-            logger.warning("Fondation LV: could not load agenda page")
-            return events
-
-        selectors = [
-            ".event-card", ".event-item", ".agenda-item", ".program-item",
-            "[class*='event']", "[class*='agenda']", "article",
-        ]
-
-        cards = []
-        for sel in selectors:
-            found = soup.select(sel)
-            if found and len(found) > 1:
-                cards = found
-                break
+        cards = soup.select("article[class*='node']")
+        logger.info(f"Orangerie: found {len(cards)} article cards")
 
         for card in cards[:40]:
             try:
+                # Title
                 title_el = (
-                    card.select_one("[class*='title'],[class*='heading']")
-                    or card.find(["h2", "h3", "h4"])
+                    card.select_one("span[class*='field--name-title']")
+                    or card.find(["h4", "h3", "h2"])
                 )
                 if not title_el:
                     continue
@@ -115,50 +99,60 @@ def scrape_fondationlv_events() -> List[Dict]:
                 if not title or len(title) < 3:
                     continue
 
-                link = title_el.find("a", href=True) or card.find("a", href=True)
+                # Link
+                link = card.select_one("h4 a, h3 a, .image-container a")
                 url = ""
                 if link:
-                    href = link["href"]
-                    url = href if href.startswith("http") else FLV_BASE + href
+                    href = link.get("href", "")
+                    url = href if href.startswith("http") else ORANGERIE_BASE + href
                 if url in seen_urls:
                     continue
                 if url:
                     seen_urls.add(url)
 
-                date_el = card.find("time") or card.select_one("[class*='date']")
+                # Date (often not shown individually — extract from hours if available)
                 date_str = ""
-                if date_el:
-                    raw = date_el.get("datetime") or date_el.get_text(strip=True)
-                    date_str = _parse_date(raw)
+                hours_el = card.select_one(".hours, .event-informations")
+                time_str = ""
+                if hours_el:
+                    raw = hours_el.get_text(strip=True)
+                    # "à 11h00" → time only
+                    t_m = re.search(r"(\d{1,2})h(\d{2})?", raw, re.I)
+                    if t_m:
+                        h = int(t_m.group(1))
+                        mins = t_m.group(2) or "00"
+                        time_str = f"{h:02d}:{mins}"
 
-                desc_el = card.select_one("[class*='desc'],[class*='summary'],p")
-                description = desc_el.get_text(strip=True) if desc_el else ""
+                # Category from event-type
+                type_el = card.select_one(".field__item, .event-type")
+                type_text = type_el.get_text(strip=True) if type_el else ""
 
+                # Image
                 img = card.find("img")
                 image_url = ""
                 if img:
-                    src = img.get("src") or img.get("data-src") or img.get("data-lazy-src") or ""
-                    image_url = src if src.startswith("http") else (FLV_BASE + src if src else "")
+                    src = img.get("src") or img.get("data-src") or ""
+                    image_url = src if src.startswith("http") else (ORANGERIE_BASE + src if src else "")
 
                 events.append({
                     "title": title,
                     "date": date_str,
-                    "time": "",
+                    "time": time_str,
                     "location": LOCATION,
-                    "description": description[:400],
+                    "description": type_text[:400],
                     "url": url,
-                    "category": _infer_category(title, description),
-                    "source": "Fondation Louis Vuitton",
+                    "category": _infer_category(type_text, title),
+                    "source": "Musée de l'Orangerie",
                     "borough": ARRONDISSEMENT,
                     "image_url": image_url,
                     "price": "See website",
                     "city": "Paris",
                 })
             except Exception as e:
-                logger.debug(f"Fondation LV: error parsing card: {e}")
+                logger.debug(f"Orangerie: error parsing card: {e}")
 
     except Exception as e:
-        logger.error(f"Fondation LV scraper failed: {e}")
+        logger.error(f"Orangerie scraper failed: {e}")
 
-    logger.info(f"Fondation LV: scraped {len(events)} events")
+    logger.info(f"Orangerie: scraped {len(events)} events")
     return events
