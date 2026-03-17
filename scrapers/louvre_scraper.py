@@ -171,19 +171,26 @@ def scrape_louvre_events() -> List[Dict]:
                             image_url = src if src.startswith("http") else (LOUVRE_BASE + src if src else "")
 
                         events.append({
-                            "title": title,
-                            "date": date_str,
-                            "time": "",
-                            "location": LOCATION,
-                            "description": description[:400],
-                            "url": url,
-                            "category": _infer_category(title, description, tags_text),
-                            "source": "Louvre",
-                            "borough": ARRONDISSEMENT,
-                            "image_url": image_url,
-                            "price": "See website",
-                            "city": "Paris",
-                        })
+                    "title": title,
+                    "date": date_str,
+                    "time": "",
+                    "end_time": "",
+                    "location": LOCATION,
+                    "location_name": "Musée du Louvre",
+                    "location_address": "Rue de Rivoli, 75001 Paris, France",
+                    "neighborhood": "1st Arrondissement",
+                    "description": description[:400],
+                    "url": url,
+                    "category": _infer_category(title, description, tags_text),
+                    "source": "Musée du Louvre",
+                    "borough": ARRONDISSEMENT,
+                    "image_url": image_url,
+                    "price": "See website",
+                    "is_free": False,
+                    "is_family_friendly": any(w in (title).lower() for w in ["famille","family","enfant","kids","jeune"]),
+                    "is_outdoor": False,
+                    "city": "Paris",
+                })
                     except Exception as e:
                         logger.debug(f"Louvre: error parsing card: {e}")
 

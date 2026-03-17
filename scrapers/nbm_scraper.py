@@ -132,7 +132,11 @@ def scrape_nbm_events() -> List[Dict]:
                     "title": title,
                     "date": date_str,
                     "time": time_str,
+                    "end_time": "",
                     "location": LOCATION,
+                    "location_name": "National Building Museum",
+                    "location_address": "401 F St NW, Washington, DC 20001",
+                    "neighborhood": "Penn Quarter",
                     "description": description[:400],
                     "url": url,
                     "category": _infer_category(title, description),
@@ -140,6 +144,9 @@ def scrape_nbm_events() -> List[Dict]:
                     "borough": BOROUGH,
                     "image_url": image_url,
                     "price": price,
+                    "is_free": False,
+                    "is_family_friendly": any(w in (title+" "+description).lower() for w in ["family","kids","children","all ages"]),
+                    "is_outdoor": any(w in (title+" "+description).lower() for w in ["outdoor","garden","plaza","open air"]),
                     "city": "Washington DC",
                 })
             except Exception as e:

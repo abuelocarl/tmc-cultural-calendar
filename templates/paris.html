@@ -197,20 +197,20 @@
   </div>
   <div class="museums-grid">
     {% set museum_data = [
-      ("Pompidou",                "🎨", "Centre Pompidou",            "https://www.centrepompidou.fr/fr/programme/agenda"),
-      ("Louvre",                  "🏛", "Musée du Louvre",             "https://www.louvre.fr/expositions-et-evenements/evenements-activites"),
+      ("Centre Pompidou",         "🎨", "Centre Pompidou",            "https://www.centrepompidou.fr/fr/programme/agenda"),
+      ("Musée du Louvre",         "🏛", "Musée du Louvre",             "https://www.louvre.fr/expositions-et-evenements/evenements-activites"),
       ("Musée d'Orsay",           "🖼", "Musée d'Orsay",               "https://www.musee-orsay.fr/fr/au-programme"),
       ("Jeu de Paume",            "📷", "Jeu de Paume",                "https://jeudepaume.org/agenda/"),
       ("Musée de l'Orangerie",    "🌸", "Musée de l'Orangerie",        "https://www.musee-orangerie.fr/fr/agenda"),
-      ("Musée Picasso",           "🎭", "Musée Picasso Paris",         "https://www.museepicassoparis.fr/fr/agenda"),
+      ("Musée Picasso Paris",     "🎭", "Musée Picasso Paris",         "https://www.museepicassoparis.fr/fr/agenda"),
     ] %}
     {% for source, icon, full_name, ext_url in museum_data %}
     {% set count = meta.events | selectattr('source', 'equalto', source) | list | length %}
     <a href="{{ url_for('paris_events', source=source) }}" class="museum-card">
       <div class="museum-card-icon">{{ icon }}</div>
       <div class="museum-card-body">
-        <span class="museum-card-name">{{ source }}</span>
-        <span class="museum-card-full">{{ full_name }}</span>
+        <span class="museum-card-name">{{ full_name }}</span>
+        <span class="museum-card-full">{{ source }}</span>
         <span class="museum-card-count">{{ count }} event{{ 's' if count != 1 else '' }}</span>
       </div>
       <a href="{{ ext_url }}" class="museum-card-ext" target="_blank" rel="noopener"

@@ -15,6 +15,30 @@ from dateutil import parser as dateutil_parser
 
 logger = logging.getLogger(__name__)
 
+# Map legacy / abbreviated source names → canonical full names
+# so scraper renames don't create duplicate entries
+SOURCE_CANONICAL = {
+    # NYC
+    "AMNH":                 "American Museum of Natural History",
+    "MoMA":                 "Museum of Modern Art",
+    "Whitney":              "Whitney Museum of American Art",
+    "MCNY":                 "Museum of the City of New York",
+    "NY Historical":        "New-York Historical Society",
+    "NY Historical Society":"New-York Historical Society",
+    # DC
+    "NGA":                  "National Gallery of Art",
+    "Hirshhorn":            "Hirshhorn Museum",
+    "NMNH":                 "National Museum of Natural History",
+    "NMAAHC":               "National Museum of African American History and Culture",
+    "Spy Museum":           "International Spy Museum",
+    # Paris
+    "Pompidou":             "Centre Pompidou",
+    "Louvre":               "Musée du Louvre",
+    "Musée d'Orsay":        "Musée d'Orsay",
+    "Jeu de Paume":         "Jeu de Paume",
+    "Musée Picasso":        "Musée Picasso Paris",
+}
+
 CATEGORIES = [
     "Arts & Culture",
     "Music",
@@ -159,6 +183,9 @@ def normalize_event(event: Dict) -> Dict:
         if range_m:
             end_time_raw = range_m.group(1).strip()
 
+    raw_source = event.get("source", "Unknown")
+    canonical_source = SOURCE_CANONICAL.get(raw_source, raw_source)
+
     normalized = {
         "id": "",
         "title": event.get("title", "").strip(),
@@ -173,7 +200,7 @@ def normalize_event(event: Dict) -> Dict:
         "description": event.get("description", "").strip(),
         "url": event.get("url", ""),
         "category": event.get("category", "Other"),
-        "source": event.get("source", "Unknown"),
+        "source": canonical_source,
         "city": city,
         "borough": event.get("borough", "") or infer_borough(event.get("location", "")),
         "image_url": event.get("image_url", ""),

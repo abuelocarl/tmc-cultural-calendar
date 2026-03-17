@@ -138,7 +138,11 @@ def scrape_fondationlv_events() -> List[Dict]:
                     "title": title,
                     "date": date_str,
                     "time": time_str,
+                    "end_time": "",
                     "location": LOCATION,
+                    "location_name": "Musée de l'Orangerie",
+                    "location_address": "Jardin des Tuileries, 75001 Paris, France",
+                    "neighborhood": "1st Arrondissement",
                     "description": type_text[:400],
                     "url": url,
                     "category": _infer_category(type_text, title),
@@ -146,6 +150,9 @@ def scrape_fondationlv_events() -> List[Dict]:
                     "borough": ARRONDISSEMENT,
                     "image_url": image_url,
                     "price": "See website",
+                    "is_free": False,
+                    "is_family_friendly": any(w in (title).lower() for w in ["famille","family","enfant","kids","jeune"]),
+                    "is_outdoor": False,
                     "city": "Paris",
                 })
             except Exception as e:

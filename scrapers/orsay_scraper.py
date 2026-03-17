@@ -146,7 +146,11 @@ def scrape_orsay_events() -> List[Dict]:
                     "title": title,
                     "date": date_str,
                     "time": "",
+                    "end_time": "",
                     "location": LOCATION,
+                    "location_name": "Musée d'Orsay",
+                    "location_address": "1 Rue de la Légion d'Honneur, 75007 Paris, France",
+                    "neighborhood": "7th Arrondissement",
                     "description": description[:400],
                     "url": url,
                     "category": _infer_category(title, description),
@@ -154,6 +158,9 @@ def scrape_orsay_events() -> List[Dict]:
                     "borough": ARRONDISSEMENT,
                     "image_url": image_url,
                     "price": "See website",
+                    "is_free": False,
+                    "is_family_friendly": any(w in (title).lower() for w in ["famille","family","enfant","kids","jeune"]),
+                    "is_outdoor": False,
                     "city": "Paris",
                 })
             except Exception as e:

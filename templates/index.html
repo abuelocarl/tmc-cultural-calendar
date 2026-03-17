@@ -184,29 +184,71 @@
 <!-- ── Museum Browse ── -->
 <section class="museums-section">
   <div class="section-header">
-    <h2 class="section-title">Browse by <em>Museum</em></h2>
-    <a href="{{ url_for('dc_events') }}" class="see-all">DC Museums →</a>
+    <h2 class="section-title">Browse by <em>Institution</em></h2>
+    <a href="{{ url_for('dc_events') }}" class="see-all">DC Institutions →</a>
   </div>
+
+  <!-- Manhattan -->
+  <h3 class="museums-subheading">Manhattan</h3>
   <div class="museums-grid">
-    {% set museum_data = [
-      ("AMNH",         "🦕", "American Museum of Natural History",    "https://www.amnh.org/calendar"),
-      ("MoMA",         "🖼",  "Museum of Modern Art",                  "https://www.moma.org/calendar"),
-      ("Whitney",      "🎨", "Whitney Museum of American Art",         "https://whitney.org/events"),
-      ("MCNY",         "🗽", "Museum of the City of New York",         "https://www.mcny.org/events"),
-      ("New Museum",   "🏢", "New Museum",                             "https://www.newmuseum.org/calendar"),
-      ("NY Historical","📜", "New-York Historical Society",            "https://www.nyhistory.org/programs"),
+    {% set manhattan_data = [
+      ("The Metropolitan Museum of Art", "🏛",  "The Met",                             "https://www.metmuseum.org/events"),
+      ("Museum of Modern Art",           "🖼",  "MoMA",                                "https://www.moma.org/calendar"),
+      ("Whitney Museum of American Art", "🎨", "Whitney Museum",                       "https://whitney.org/events"),
+      ("Guggenheim Museum",              "🌀", "Solomon R. Guggenheim Museum",          "https://www.guggenheim.org/calendar"),
+      ("The Frick Collection",           "🏰", "The Frick Collection",                 "https://www.frick.org/events"),
+      ("American Museum of Natural History","🦕","AMNH",                               "https://www.amnh.org/calendar"),
+      ("New-York Historical Society",    "📜", "NY Historical Society",                "https://www.nyhistory.org/programs"),
+      ("Museum of the City of New York", "🗽", "MCNY",                                 "https://www.mcny.org/events"),
+      ("Studio Museum in Harlem",        "🎭", "Studio Museum in Harlem",              "https://www.studiomuseum.org/calendar"),
+      ("Poster House",                   "🪧", "Poster House",                         "https://posterhouse.org/events"),
+      ("Museum of the Moving Image",     "🎬", "Museum of the Moving Image",           "https://movingimage.us/events"),
+      ("New Museum",                     "🏢", "New Museum",                           "https://www.newmuseum.org/calendar"),
+      ("Grand Central Terminal",         "🚂", "Grand Central Terminal",               "https://grandcentralterminal.com/events"),
+      ("The Morgan Library & Museum",    "📚", "The Morgan Library & Museum",          "https://www.themorgan.org/programs"),
+      ("9/11 Memorial & Museum",         "🕊",  "9/11 Memorial & Museum",              "https://www.911memorial.org/visit/museum/events"),
     ] %}
-    {% for source, icon, full_name, ext_url in museum_data %}
-    {% set count = meta.events | selectattr('source', 'equalto', source) | list | length %}
+    {% for source, icon, short_name, ext_url in manhattan_data %}
+    {% set count = meta.events | selectattr('source', 'equalto', source) | selectattr('city', 'equalto', 'New York') | list | length %}
     <a href="{{ url_for('event_list', source=source) }}" class="museum-card">
       <div class="museum-card-icon">{{ icon }}</div>
       <div class="museum-card-body">
-        <span class="museum-card-name">{{ source }}</span>
-        <span class="museum-card-full">{{ full_name }}</span>
+        <span class="museum-card-name">{{ short_name }}</span>
+        <span class="museum-card-full">{{ source }}</span>
         <span class="museum-card-count">{{ count }} event{{ 's' if count != 1 else '' }}</span>
       </div>
       <a href="{{ ext_url }}" class="museum-card-ext" target="_blank" rel="noopener"
-         onclick="event.stopPropagation()" title="Visit {{ source }} website">↗</a>
+         onclick="event.stopPropagation()" title="Visit website">↗</a>
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Brooklyn & Outer Boroughs -->
+  <h3 class="museums-subheading" style="margin-top:2rem;">Brooklyn & Outer Boroughs</h3>
+  <div class="museums-grid">
+    {% set outer_data = [
+      ("Brooklyn Museum",             "🎨", "Brooklyn Museum",               "https://www.brooklynmuseum.org/events"),
+      ("Brooklyn Bridge Park",        "🌉", "Brooklyn Bridge Park",          "https://brooklynbridgepark.org/events"),
+      ("Brooklyn Children's Museum",  "🧒", "Brooklyn Children's Museum",    "https://www.brooklynkids.org/events"),
+      ("High Line",                   "🌿", "The High Line",                 "https://www.thehighline.org/events"),
+      ("Bryant Park",                 "🌳", "Bryant Park",                   "https://bryantpark.org/programs"),
+      ("Central Park Conservancy",    "🌲", "Central Park Conservancy",      "https://www.centralparknyc.org/events"),
+      ("Prospect Park Alliance",      "🏞",  "Prospect Park",                 "https://www.prospectpark.org/events"),
+      ("The Noguchi Museum",          "🪨", "The Noguchi Museum",            "https://www.noguchi.org/programs"),
+      ("New York Transit Museum",     "🚇", "NY Transit Museum",             "https://www.nytransitmuseum.org/plan-your-visit/events"),
+      ("Intrepid Sea, Air & Space Museum","✈️","Intrepid Museum",             "https://www.intrepidmuseum.org/events"),
+    ] %}
+    {% for source, icon, short_name, ext_url in outer_data %}
+    {% set count = meta.events | selectattr('source', 'equalto', source) | selectattr('city', 'equalto', 'New York') | list | length %}
+    <a href="{{ url_for('event_list', source=source) }}" class="museum-card">
+      <div class="museum-card-icon">{{ icon }}</div>
+      <div class="museum-card-body">
+        <span class="museum-card-name">{{ short_name }}</span>
+        <span class="museum-card-full">{{ source }}</span>
+        <span class="museum-card-count">{{ count }} event{{ 's' if count != 1 else '' }}</span>
+      </div>
+      <a href="{{ ext_url }}" class="museum-card-ext" target="_blank" rel="noopener"
+         onclick="event.stopPropagation()" title="Visit website">↗</a>
     </a>
     {% endfor %}
   </div>

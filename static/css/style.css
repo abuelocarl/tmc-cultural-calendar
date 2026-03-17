@@ -592,6 +592,17 @@ input, select, textarea { font-family: inherit; }
 
 /* ── Museums ── */
 .museums-section { padding: 4rem 2rem; max-width: 1400px; margin: 0 auto; }
+.museums-subheading {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border);
+}
 .museums-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
