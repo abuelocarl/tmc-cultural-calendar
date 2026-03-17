@@ -106,20 +106,28 @@ def scrape_mcny_events() -> List[Dict]:
         if image_url and not image_url.startswith("http"):
             image_url = BASE_URL + image_url
 
+        link_text = (title + " " + description + " " + category_raw).lower()
+        is_free = any(w in link_text for w in ["free", "no cost", "complimentary"])
+        is_family = any(w in link_text for w in ["family", "kids", "children", "all ages"])
         events.append({
             "title": title,
             "date": date_iso,
             "end_date": "",
             "time": time_str,
+            "end_time": "",
             "location": "Museum of the City of New York, 1220 Fifth Ave, New York, NY 10029",
+            "location_name": "Museum of the City of New York",
+            "location_address": "1220 Fifth Ave, New York, NY 10029",
+            "neighborhood": "East Harlem",
             "description": description,
             "url": url,
-            "category": "Arts & Culture",
-            "source": "MCNY",
+            "category": "Heritage & History",
+            "source": "Museum of the City of New York",
             "borough": "Manhattan",
             "image_url": image_url,
-            "price": "See website",
-            "mcny_category": category_raw,
+            "price": "Free" if is_free else "See website",
+            "is_free": is_free,
+            "is_family_friendly": is_family,
         })
 
     # Deduplicate by URL

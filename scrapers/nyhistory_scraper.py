@@ -120,20 +120,28 @@ def scrape_nyhistory_events() -> List[Dict]:
             if img:
                 image_url = img.get("src", "")
 
+        link_text = (title + " " + description + " " + category_raw).lower()
+        is_free = any(w in link_text for w in ["free", "no cost", "complimentary"])
+        is_family = any(w in link_text for w in ["family", "kids", "children", "all ages"])
         events.append({
             "title": title,
             "date": date_iso,
             "end_date": "",
             "time": time_str,
+            "end_time": "",
             "location": "New-York Historical Society, 170 Central Park West, New York, NY 10024",
+            "location_name": "New-York Historical Society",
+            "location_address": "170 Central Park West, New York, NY 10024",
+            "neighborhood": "Upper West Side",
             "description": description,
             "url": url,
-            "category": "Arts & Culture",
-            "source": "NY Historical Society",
+            "category": "Heritage & History",
+            "source": "New-York Historical Society",
             "borough": "Manhattan",
             "image_url": image_url,
-            "price": "See website",
-            "nyhistory_category": category_raw,
+            "price": "Free" if is_free else "See website",
+            "is_free": is_free,
+            "is_family_friendly": is_family,
         })
 
     # Filter to upcoming events only and deduplicate by URL

@@ -98,19 +98,40 @@ def scrape_whitney_events() -> List[Dict]:
         img = link.find("img")
         image_url = img.get("src", "") if img else ""
 
+        # Detect free events, family-friendly, outdoor from link text
+        link_text = link.get_text(" ", strip=True).lower()
+        is_free = any(w in link_text for w in ["free", "no cost", "complimentary"])
+        is_family = any(w in link_text for w in ["family", "kids", "children", "all ages"])
+        is_outdoor = any(w in link_text for w in ["outdoor", "terrace", "garden", "open air"])
+        price = "Free" if is_free else "See website"
+
+        # Extract end_time from ranges like "1–3 pm"
+        end_time = ""
+        if time_str:
+            range_m = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", time_str, re.I)
+            if range_m:
+                end_time = range_m.group(1).strip()
+
         events.append({
             "title": title,
             "date": date_iso,
             "end_date": "",
             "time": time_str,
+            "end_time": end_time,
             "location": "Whitney Museum of American Art, 99 Gansevoort St, New York, NY 10014",
+            "location_name": "Whitney Museum of American Art",
+            "location_address": "99 Gansevoort St, New York, NY 10014",
+            "neighborhood": "Meatpacking District",
             "description": "",
             "url": url,
             "category": "Arts & Culture",
-            "source": "Whitney Museum",
+            "source": "Whitney Museum of American Art",
             "borough": "Manhattan",
             "image_url": image_url,
-            "price": "See website",
+            "price": price,
+            "is_free": is_free,
+            "is_family_friendly": is_family,
+            "is_outdoor": is_outdoor,
         })
 
     # Deduplicate by URL

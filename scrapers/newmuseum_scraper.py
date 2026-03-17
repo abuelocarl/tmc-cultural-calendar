@@ -134,19 +134,34 @@ def scrape_newmuseum_events() -> List[Dict]:
         if description:
             description = re.sub(r"<[^>]+>", "", description).strip()[:300]
 
+        link_text = (title + " " + description).lower()
+        is_free = any(w in link_text for w in ["free", "no cost", "complimentary"])
+        is_family = any(w in link_text for w in ["family", "kids", "children", "all ages"])
+        end_time = ""
+        if time_str:
+            import re as _re
+            range_m = _re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", time_str, _re.I)
+            if range_m:
+                end_time = range_m.group(1).strip()
         events.append({
             "title": title,
             "date": date_iso,
             "end_date": end_date_iso,
             "time": time_str,
+            "end_time": end_time,
             "location": "New Museum, 235 Bowery, New York, NY 10002",
+            "location_name": "New Museum",
+            "location_address": "235 Bowery, New York, NY 10002",
+            "neighborhood": "Lower East Side",
             "description": description,
             "url": url,
             "category": "Arts & Culture",
             "source": "New Museum",
             "borough": "Manhattan",
             "image_url": image_url,
-            "price": "See website",
+            "price": "Free" if is_free else "See website",
+            "is_free": is_free,
+            "is_family_friendly": is_family,
         })
 
     # Deduplicate by URL

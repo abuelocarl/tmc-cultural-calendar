@@ -121,16 +121,55 @@ def generate_event_id(event: Dict) -> str:
     return hashlib.md5(key.encode()).hexdigest()[:12]
 
 
+def _split_location_parts(location: str):
+    """Split 'Venue Name, 123 Street, City, State ZIP' → (location_name, location_address)."""
+    if not location:
+        return "", ""
+    parts = [p.strip() for p in location.split(",", 1)]
+    return parts[0], parts[1] if len(parts) > 1 else ""
+
+
+def _is_after_hours(time_str: str) -> bool:
+    """Return True if event starts at 6 pm or later."""
+    if not time_str:
+        return False
+    m24 = re.match(r"^(\d{1,2}):\d{2}", time_str.strip())
+    if m24:
+        return int(m24.group(1)) >= 18
+    m12 = re.search(r"(\d{1,2})(?::\d{2})?\s*(am|pm)", time_str, re.I)
+    if m12:
+        hour, meridiem = int(m12.group(1)), m12.group(2).lower()
+        if meridiem == "pm" and hour != 12:
+            hour += 12
+        return hour >= 18
+    return False
+
+
 def normalize_event(event: Dict) -> Dict:
     """Normalize an event dict to a standard format."""
     city = event.get("city", "New York")
+    raw_time = event.get("time", "") or event.get("date", "")
+    location = event.get("location", "New York, NY").strip()
+    loc_name, loc_addr = _split_location_parts(location)
+
+    # End time: support explicit end_time or extraction from time range "7–10 pm"
+    end_time_raw = event.get("end_time", "")
+    if not end_time_raw:
+        range_m = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", raw_time, re.I)
+        if range_m:
+            end_time_raw = range_m.group(1).strip()
+
     normalized = {
         "id": "",
         "title": event.get("title", "").strip(),
         "date": normalize_date(event.get("date", "")),
         "end_date": normalize_date(event.get("end_date", "")),
-        "time": normalize_time(event.get("time", "") or event.get("date", "")),
-        "location": event.get("location", "New York, NY").strip(),
+        "time": normalize_time(raw_time),
+        "end_time": normalize_time(end_time_raw),
+        "location": location,
+        "location_name": event.get("location_name", loc_name),
+        "location_address": event.get("location_address", loc_addr),
+        "neighborhood": event.get("neighborhood", ""),
         "description": event.get("description", "").strip(),
         "url": event.get("url", ""),
         "category": event.get("category", "Other"),
@@ -139,21 +178,39 @@ def normalize_event(event: Dict) -> Dict:
         "borough": event.get("borough", "") or infer_borough(event.get("location", "")),
         "image_url": event.get("image_url", ""),
         "price": event.get("price", "See website"),
-        "tags": [],
+        "tags": list(event.get("tags", [])),   # preserve any tags from import
         "created_at": datetime.utcnow().isoformat(),
         "updated_at": datetime.utcnow().isoformat(),
         "is_featured": False,
-        "is_free": False,
+        "is_free": bool(event.get("is_free", False)),
+        "is_outdoor": bool(event.get("is_outdoor", False)),
+        "is_after_hours": bool(event.get("is_after_hours", False)),
+        "is_family_friendly": bool(event.get("is_family_friendly", False)),
     }
-    
+
     # Determine if free
     price_lower = normalized["price"].lower()
     if any(word in price_lower for word in ["free", "$0", "no cost", "complimentary"]):
         normalized["is_free"] = True
-    
-    # Auto-generate tags
-    tags = []
+
+    # Derive behavioral flags from time / tags / description
     title_desc = (normalized["title"] + " " + normalized["description"]).lower()
+    existing_tags = set(normalized["tags"])
+
+    if not normalized["is_after_hours"]:
+        normalized["is_after_hours"] = _is_after_hours(normalized["time"])
+
+    if not normalized["is_outdoor"]:
+        normalized["is_outdoor"] = any(
+            kw in title_desc for kw in ["outdoor", "open air", " park ", "garden", "plaza"]
+        ) or "outdoor" in existing_tags
+
+    if not normalized["is_family_friendly"]:
+        normalized["is_family_friendly"] = any(
+            kw in title_desc for kw in ["family", "kids", "children", "all ages"]
+        ) or "family" in existing_tags
+
+    # Auto-generate tags (merge with any pre-existing tags)
     tag_keywords = {
         "family": ["family", "kids", "children", "all ages"],
         "outdoor": ["outdoor", "park", "garden", "open air"],
@@ -167,15 +224,27 @@ def normalize_event(event: Dict) -> Dict:
         "festival": ["festival", "fair", "carnival", "celebration"],
         "heritage": ["heritage", "culture", "history", "tradition"],
         "community": ["community", "neighborhood", "local"],
+        "after_hours": [],   # driven by flag only
     }
     for tag, keywords in tag_keywords.items():
-        if any(kw in title_desc for kw in keywords):
-            tags.append(tag)
-    normalized["tags"] = tags
-    
+        if tag not in existing_tags and any(kw in title_desc for kw in keywords):
+            existing_tags.add(tag)
+
+    # Add flag-driven tags
+    if normalized["is_free"] and "free" not in existing_tags:
+        existing_tags.add("free")
+    if normalized["is_outdoor"] and "outdoor" not in existing_tags:
+        existing_tags.add("outdoor")
+    if normalized["is_family_friendly"] and "family" not in existing_tags:
+        existing_tags.add("family")
+    if normalized["is_after_hours"] and "after_hours" not in existing_tags:
+        existing_tags.add("after_hours")
+
+    normalized["tags"] = sorted(existing_tags)
+
     # Generate unique ID
     normalized["id"] = generate_event_id(normalized)
-    
+
     return normalized
 
 
@@ -434,36 +503,55 @@ def _flag_price(event: Dict) -> str:
 
 def event_to_csv_row(event: Dict) -> Dict:
     """Map a normalized event dict to a TMC CSV submission row."""
-    location_name, location_address = _split_location(event.get("location", ""))
-    neighborhood = _infer_neighborhood(event.get("location", ""))
+    # Use stored split fields first, fall back to inference
+    location_name = event.get("location_name", "") or ""
+    location_address = event.get("location_address", "") or ""
+    if not location_name and not location_address:
+        location_name, location_address = _split_location(event.get("location", ""))
 
-    # End time: if we have a time range like '7-10 pm', extract the end
+    neighborhood = event.get("neighborhood", "") or _infer_neighborhood(event.get("location", ""))
+    area = event.get("neighborhood", "") or neighborhood
+
     time_str = event.get("time", "")
-    end_time = ""
-    range_match = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", time_str, re.I)
-    if range_match:
-        end_time = range_match.group(1).strip()
+    end_time = event.get("end_time", "")
+
+    # Audience flag
+    audience = ""
+    tags = event.get("tags", [])
+    if event.get("is_family_friendly") or "family" in tags:
+        audience = "family friendly"
+    elif not event.get("is_family_friendly"):
+        audience = "adults"
+
+    # Food flag
+    food_flag = "True" if "food" in tags else "BLANK"
+
+    # After-hours: use stored flag or derive from time
+    after_hours = "1" if (event.get("is_after_hours") or _flag_after_hours(time_str) == "Yes") else "0"
+
+    # Outdoor flag
+    outdoor = "1" if (event.get("is_outdoor") or "outdoor" in tags) else "0"
 
     return {
-        "form_submitted_by":        event.get("source", "TMC Scraper"),
-        "form_event_title":         event.get("title", ""),
-        "form_event_city":          event.get("city", "New York"),
-        "form_event_borough":       event.get("borough", ""),
-        "form_event_area":          neighborhood,
-        "form_event_date":          _format_date_for_csv(event.get("date", "")),
-        "form_event_description":   event.get("description", ""),
-        "form_event_time":          time_str,
-        "form_event_endtime":       end_time,
-        "form_event_host_name":     event.get("source", ""),
-        "form_event_location_name": location_name,
+        "form_submitted_by":           event.get("source", "TMC Scraper"),
+        "form_event_title":            event.get("title", ""),
+        "form_event_city":             event.get("city", "New York"),
+        "form_event_borough":          event.get("borough", ""),
+        "form_event_area":             area,
+        "form_event_date":             _format_date_for_csv(event.get("date", "")),
+        "form_event_description":      event.get("description", ""),
+        "form_event_time":             time_str,
+        "form_event_endtime":          end_time,
+        "form_event_host_name":        event.get("source", ""),
+        "form_event_location_name":    location_name,
         "form_event_location_address": location_address,
-        "form_event_neighborhood":  neighborhood,
-        "form_event_url":           event.get("url", ""),
-        "form _flag_price":         _flag_price(event),
-        "form _flag_audience":      "",
-        "form _flag_food":          "",
-        "form _flag_after_hours":   _flag_after_hours(time_str),
-        "form _flag_flag_outdoor":  "",
+        "form_event_neighborhood":     neighborhood,
+        "form_event_url":              event.get("url", ""),
+        "form _flag_price":            _flag_price(event),
+        "form _flag_audience":         audience,
+        "form _flag_food":             food_flag,
+        "form _flag_after_hours":      after_hours,
+        "form _flag_flag_outdoor":     outdoor,
     }
 
 

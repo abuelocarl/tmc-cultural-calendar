@@ -127,27 +127,52 @@ def _parse_and_append(link, date_iso: str, events: List[Dict]) -> None:
     # All scale-down paragraphs: [0]=time, [1]=location, [2]=event type
     detail_paras = link.find_all("p", class_=re.compile(r"scale:down|scale-down"))
     time_str = detail_paras[0].get_text(strip=True) if len(detail_paras) > 0 else ""
-    location = detail_paras[1].get_text(strip=True) if len(detail_paras) > 1 else "MoMA, 11 W 53rd St, New York, NY"
+    location_raw = detail_paras[1].get_text(strip=True) if len(detail_paras) > 1 else ""
     event_type = detail_paras[2].get_text(strip=True) if len(detail_paras) > 2 else ""
 
-    if not location or location.lower() in ("moma",):
-        location = "MoMA, 11 W 53rd St, New York, NY 10019"
+    full_location = "MoMA, 11 W 53rd St, New York, NY 10019"
+    loc_name = "Museum of Modern Art"
+    loc_addr = "11 W 53rd St, New York, NY 10019"
+    if location_raw and location_raw.lower() not in ("moma", ""):
+        full_location = f"{location_raw} — MoMA, 11 W 53rd St, New York, NY 10019"
+        loc_name = location_raw
 
     category = CATEGORY_MAP.get(event_type.lower().strip(), "Arts & Culture")
+
+    # Detect free / family / after-hours from link text
+    link_text = link.get_text(" ", strip=True).lower()
+    is_free = any(w in link_text for w in ["free", "no cost", "no charge"])
+    is_family = any(w in link_text for w in ["family", "kids", "children", "all ages"])
+    if event_type.lower() in ("family",):
+        is_family = True
+    price = "Free" if is_free else "See website"
+
+    # End-time extraction from ranges like "6–8 pm"
+    end_time = ""
+    if time_str:
+        range_m = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", time_str, re.I)
+        if range_m:
+            end_time = range_m.group(1).strip()
 
     events.append({
         "title": title,
         "date": date_iso,
         "end_date": "",
         "time": time_str,
-        "location": location if "New York" in location else f"{location} — MoMA, 11 W 53rd St, New York, NY 10019",
+        "end_time": end_time,
+        "location": full_location,
+        "location_name": loc_name,
+        "location_address": loc_addr,
+        "neighborhood": "Midtown West",
         "description": event_type,
         "url": url,
         "category": category,
-        "source": "MoMA",
+        "source": "Museum of Modern Art",
         "borough": "Manhattan",
         "image_url": "",
-        "price": "See website",
+        "price": price,
+        "is_free": is_free,
+        "is_family_friendly": is_family,
     })
 
 

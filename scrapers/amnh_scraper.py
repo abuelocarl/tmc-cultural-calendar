@@ -140,20 +140,41 @@ def scrape_amnh_events() -> List[Dict]:
             category_raw.lower().strip(), "Arts & Culture"
         )
 
+        # Detect free / family / after-hours
+        link_text = (title + " " + description + " " + category_raw).lower()
+        is_free = any(w in link_text for w in ["free", "no cost", "complimentary"])
+        is_family = any(w in link_text for w in ["family", "kids", "children", "all ages"])
+        is_after_hours = category_raw.lower() == "after-hours program"
+
+        # End-time from range in time_str "7–10 pm"
+        end_time = ""
+        if time_str:
+            range_m = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", time_str, re.I)
+            if range_m:
+                end_time = range_m.group(1).strip()
+
+        price = "Sold Out" if sold_out else ("Free" if is_free else "See website")
+
         events.append({
             "title": title,
             "date": date_iso,
             "end_date": "",
             "time": time_str,
+            "end_time": end_time,
             "location": "American Museum of Natural History, 200 Central Park West, New York, NY 10024",
+            "location_name": "American Museum of Natural History",
+            "location_address": "200 Central Park West, New York, NY 10024",
+            "neighborhood": "Upper West Side",
             "description": description[:300],
             "url": url,
             "category": normalized_category,
-            "source": "AMNH",
+            "source": "American Museum of Natural History",
             "borough": "Manhattan",
             "image_url": image_url,
-            "price": "Sold Out" if sold_out else "See website",
-            "amnh_category": category_raw,
+            "price": price,
+            "is_free": is_free,
+            "is_family_friendly": is_family,
+            "is_after_hours": is_after_hours,
         })
 
     # Deduplicate by URL
