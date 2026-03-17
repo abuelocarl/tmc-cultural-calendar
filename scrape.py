@@ -50,6 +50,7 @@ from scrapers.nyhistory_scraper import scrape_nyhistory_events
 from scrapers.nga_scraper import scrape_nga_events
 from scrapers.hirshhorn_scraper import scrape_hirshhorn_events
 from scrapers.nmnh_scraper import scrape_nmnh_events
+from scrapers.nmah_scraper import scrape_nmah_events
 from scrapers.nmaahc_scraper import scrape_nmaahc_events
 from scrapers.nbm_scraper import scrape_nbm_events
 from scrapers.spymuseum_scraper import scrape_spymuseum_events
@@ -60,7 +61,7 @@ from scrapers.orsay_scraper import scrape_orsay_events
 from scrapers.palaisdetokyo_scraper import scrape_palaisdetokyo_events
 from scrapers.fondationlv_scraper import scrape_fondationlv_events
 from scrapers.museepicasso_scraper import scrape_museepicasso_events
-from consolidator import consolidate_events, save_events, save_events_csv
+from consolidator import consolidate_events, save_events, save_events_csv, load_events
 
 # Configure logging
 logging.basicConfig(
@@ -75,7 +76,7 @@ logging.basicConfig(
 logger = logging.getLogger("tmc-scraper")
 
 MUSEUM_SOURCES = {"amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory"}
-DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmaahc", "nbm", "spymuseum"}
+DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmah", "nmaahc", "nbm", "spymuseum"}
 PARIS_SOURCES = {"pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso"}
 
 
@@ -98,6 +99,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         "nga": 0,
         "hirshhorn": 0,
         "nmnh": 0,
+        "nmah": 0,
         "nmaahc": 0,
         "nbm": 0,
         "spymuseum": 0,
@@ -124,6 +126,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
     nga_events = []
     hirshhorn_events = []
     nmnh_events = []
+    nmah_events = []
     nmaahc_events = []
     nbm_events = []
     spymuseum_events = []
@@ -283,6 +286,18 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
             logger.error(msg)
             results["errors"].append(msg)
 
+    # ── NMAH ─────────────────────────────────────────────────────
+    if is_all or is_dc or source == "nmah":
+        logger.info("🇺🇸  Scraping NMAH events...")
+        try:
+            nmah_events = scrape_nmah_events()
+            results["nmah"] = len(nmah_events)
+            logger.info(f"  ✓ NMAH: {len(nmah_events)} events found")
+        except Exception as e:
+            msg = f"NMAH scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
     # ── NMAAHC ───────────────────────────────────────────────────
     if is_all or is_dc or source == "nmaahc":
         logger.info("🏛  Scraping NMAAHC events...")
@@ -406,6 +421,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         nga_events=nga_events,
         hirshhorn_events=hirshhorn_events,
         nmnh_events=nmnh_events,
+        nmah_events=nmah_events,
         nmaahc_events=nmaahc_events,
         nbm_events=nbm_events,
         spymuseum_events=spymuseum_events,
@@ -420,9 +436,27 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
 
     # ── Save ────────────────────────────────────────────────────
     if save and all_events:
-        save_events(all_events, "data/events.json")
-        save_events_csv(all_events, "data/events.csv")
-        logger.info(f"💾  Saved {len(all_events)} events to data/events.json + data/events.csv")
+        # When running a targeted source (not "all"), merge with the existing
+        # store so other sources' events are preserved.
+        if source != "all":
+            existing = load_events("data/events.json")
+            # Determine which source names the current run may have produced
+            new_sources = {e.get("source", "") for e in all_events}
+            # Keep existing events whose source wasn't touched by this run
+            kept = [e for e in existing if e.get("source", "") not in new_sources]
+            merged = kept + all_events
+            merged.sort(key=lambda e: e.get("date", "9999-99-99"))
+            save_events(merged, "data/events.json")
+            save_events_csv(merged, "data/events.csv")
+            logger.info(
+                f"💾  Merged {len(all_events)} new + {len(kept)} existing "
+                f"= {len(merged)} total events saved"
+            )
+            results["total"] = len(merged)
+        else:
+            save_events(all_events, "data/events.json")
+            save_events_csv(all_events, "data/events.csv")
+            logger.info(f"💾  Saved {len(all_events)} events to data/events.json + data/events.csv")
     elif save and not all_events:
         logger.warning("⚠️  No events found — data files not updated")
 
@@ -447,6 +481,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         f"  NGA:                  {results['nga']:>4} events\n"
         f"  Hirshhorn:            {results['hirshhorn']:>4} events\n"
         f"  NMNH:                 {results['nmnh']:>4} events\n"
+        f"  NMAH:                 {results['nmah']:>4} events\n"
         f"  NMAAHC:               {results['nmaahc']:>4} events\n"
         f"  Natl Building Museum: {results['nbm']:>4} events\n"
         f"  Spy Museum:           {results['spymuseum']:>4} events\n"
@@ -492,7 +527,7 @@ Examples:
             "all", "museums", "dc", "paris",
             "nyc", "eventbrite", "timeout",
             "amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory",
-            "nga", "hirshhorn", "nmnh", "nmaahc", "nbm", "spymuseum",
+            "nga", "hirshhorn", "nmnh", "nmah", "nmaahc", "nbm", "spymuseum",
             "pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso",
         ],
         default="all",
