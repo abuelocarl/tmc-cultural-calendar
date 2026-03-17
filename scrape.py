@@ -18,6 +18,8 @@ Usage:
     python scrape.py --source nga
     python scrape.py --source hirshhorn
     python scrape.py --source nmnh
+    python scrape.py --source nmah
+    python scrape.py --source nasm
     python scrape.py --source nmaahc
     python scrape.py --source nbm
     python scrape.py --source spymuseum
@@ -51,6 +53,7 @@ from scrapers.nga_scraper import scrape_nga_events
 from scrapers.hirshhorn_scraper import scrape_hirshhorn_events
 from scrapers.nmnh_scraper import scrape_nmnh_events
 from scrapers.nmah_scraper import scrape_nmah_events
+from scrapers.nasm_scraper import scrape_nasm_events
 from scrapers.nmaahc_scraper import scrape_nmaahc_events
 from scrapers.nbm_scraper import scrape_nbm_events
 from scrapers.spymuseum_scraper import scrape_spymuseum_events
@@ -76,7 +79,7 @@ logging.basicConfig(
 logger = logging.getLogger("tmc-scraper")
 
 MUSEUM_SOURCES = {"amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory"}
-DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmah", "nmaahc", "nbm", "spymuseum"}
+DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmah", "nasm", "nmaahc", "nbm", "spymuseum"}
 PARIS_SOURCES = {"pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso"}
 
 
@@ -100,6 +103,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         "hirshhorn": 0,
         "nmnh": 0,
         "nmah": 0,
+        "nasm": 0,
         "nmaahc": 0,
         "nbm": 0,
         "spymuseum": 0,
@@ -127,6 +131,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
     hirshhorn_events = []
     nmnh_events = []
     nmah_events = []
+    nasm_events = []
     nmaahc_events = []
     nbm_events = []
     spymuseum_events = []
@@ -298,6 +303,18 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
             logger.error(msg)
             results["errors"].append(msg)
 
+    # ── NASM ─────────────────────────────────────────────────────
+    if is_all or is_dc or source == "nasm":
+        logger.info("🚀  Scraping National Air and Space Museum events...")
+        try:
+            nasm_events = scrape_nasm_events()
+            results["nasm"] = len(nasm_events)
+            logger.info(f"  ✓ NASM: {len(nasm_events)} events found")
+        except Exception as e:
+            msg = f"NASM scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
     # ── NMAAHC ───────────────────────────────────────────────────
     if is_all or is_dc or source == "nmaahc":
         logger.info("🏛  Scraping NMAAHC events...")
@@ -422,6 +439,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         hirshhorn_events=hirshhorn_events,
         nmnh_events=nmnh_events,
         nmah_events=nmah_events,
+        nasm_events=nasm_events,
         nmaahc_events=nmaahc_events,
         nbm_events=nbm_events,
         spymuseum_events=spymuseum_events,
@@ -482,6 +500,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         f"  Hirshhorn:            {results['hirshhorn']:>4} events\n"
         f"  NMNH:                 {results['nmnh']:>4} events\n"
         f"  NMAH:                 {results['nmah']:>4} events\n"
+        f"  NASM:                 {results['nasm']:>4} events\n"
         f"  NMAAHC:               {results['nmaahc']:>4} events\n"
         f"  Natl Building Museum: {results['nbm']:>4} events\n"
         f"  Spy Museum:           {results['spymuseum']:>4} events\n"
@@ -527,7 +546,7 @@ Examples:
             "all", "museums", "dc", "paris",
             "nyc", "eventbrite", "timeout",
             "amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory",
-            "nga", "hirshhorn", "nmnh", "nmah", "nmaahc", "nbm", "spymuseum",
+            "nga", "hirshhorn", "nmnh", "nmah", "nasm", "nmaahc", "nbm", "spymuseum",
             "pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso",
         ],
         default="all",
