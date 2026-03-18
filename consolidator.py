@@ -140,8 +140,14 @@ def infer_borough(location: str) -> str:
 
 
 def generate_event_id(event: Dict) -> str:
-    """Generate a unique ID for an event based on title + date + source."""
-    key = f"{event.get('title','').lower()}{event.get('date','')}{event.get('source','')}"
+    """Generate a unique ID for an event based on title + date + time + city + source."""
+    key = (
+        f"{event.get('title','').lower()}"
+        f"{event.get('date','')}"
+        f"{event.get('time','')}"
+        f"{event.get('city','').lower()}"
+        f"{event.get('source','')}"
+    )
     return hashlib.md5(key.encode()).hexdigest()[:12]
 
 

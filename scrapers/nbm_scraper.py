@@ -20,7 +20,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -48,12 +48,29 @@ CATEGORY_MAP = {
 }
 
 
+def _to_24h(time_raw: str) -> str:
+    """Convert '6:00 pm', '11am', '12:00 PM' → '18:00', '11:00', '12:00'."""
+    if not time_raw:
+        return ""
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", time_raw.strip(), re.I)
+    if not m:
+        return ""
+    hour = int(m.group(1))
+    minute = m.group(2) or "00"
+    meridiem = m.group(3).lower()
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}"
+
+
 def _parse_tribe_time(text: str) -> str:
-    """Extract start time from 'March 18 @ 6:00 pm' → '6:00 pm'."""
+    """Extract start time from 'March 18 @ 6:00 pm' → '18:00'."""
     if not text:
         return ""
     m = re.search(r"@\s*(\d{1,2}:\d{2}\s*(?:am|pm))", text, re.I)
-    return m.group(1).strip() if m else ""
+    return _to_24h(m.group(1)) if m else ""
 
 
 def _infer_category(title: str, desc: str) -> str:
@@ -112,6 +129,14 @@ def scrape_nbm_events() -> List[Dict]:
                     start_span = time_el.select_one(".tribe-event-date-start")
                     if start_span:
                         time_str = _parse_tribe_time(start_span.get_text(strip=True))
+                # Skip past or undated events
+                if not date_str:
+                    continue
+                try:
+                    if datetime.strptime(date_str, "%Y-%m-%d").date() < date.today():
+                        continue
+                except ValueError:
+                    continue
 
                 desc_el = card.select_one(
                     ".tribe-events-calendar-list__event-description, .tribe-common-b2, p"

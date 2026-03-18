@@ -18,7 +18,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -51,17 +51,44 @@ MONTHS = {
 }
 
 
+def _to_24h(time_raw: str) -> str:
+    """Convert '6:30 pm', '11am', '12:00 PM' → '18:30', '11:00', '12:00'."""
+    if not time_raw:
+        return ""
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", time_raw.strip(), re.I)
+    if not m:
+        # Already HH:MM with no meridiem — return as-is if valid
+        hm = re.match(r"^(\d{1,2}):(\d{2})$", time_raw.strip())
+        if hm:
+            return f"{int(hm.group(1)):02d}:{hm.group(2)}"
+        return ""
+    hour = int(m.group(1))
+    minute = m.group(2) or "00"
+    meridiem = m.group(3).lower()
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}"
+
+
 def _parse_nmnh_date(text: str):
     """Parse 'Thursday, March 19, 2026, 6:30 – 8:15pm EDT' → (date_iso, time_str)."""
     if not text:
         return "", ""
     text = text.strip()
 
-    # Time: first H:MM (start time)
-    time_match = re.search(r"(\d{1,2}:\d{2})\s*(am|pm|AM|PM)?", text)
+    # Time range: look for am/pm pattern first, then fall back to bare H:MM
     time_str = ""
-    if time_match:
-        time_str = time_match.group(1) + (" " + time_match.group(2) if time_match.group(2) else "")
+    # Try to find a time with am/pm indicator (most reliable)
+    time_m = re.search(r"(\d{1,2}(?::\d{2})?)\s*(am|pm)", text, re.I)
+    if time_m:
+        time_str = _to_24h(time_m.group(0))
+    else:
+        # Bare H:MM (e.g. "6:30 – 8:15")
+        bare = re.search(r"(\d{1,2}:\d{2})", text)
+        if bare:
+            time_str = _to_24h(bare.group(1))
 
     # Date: Month Day, Year
     date_match = re.search(
@@ -74,7 +101,10 @@ def _parse_nmnh_date(text: str):
         year = int(year) if year else datetime.now().year
         month_num = MONTHS.get(month.lower(), 1)
         try:
-            return datetime(year, month_num, int(day)).strftime("%Y-%m-%d"), time_str
+            dt = datetime(year, month_num, int(day))
+            if dt.date() < date.today():
+                return "", ""
+            return dt.strftime("%Y-%m-%d"), time_str
         except ValueError:
             pass
 

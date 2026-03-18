@@ -14,7 +14,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -51,16 +51,36 @@ MONTHS = {
 }
 
 
+def _to_24h(time_raw: str) -> str:
+    """Convert '1:30 pm', '11am', '12:00 PM' → '13:30', '11:00', '12:00'."""
+    if not time_raw:
+        return ""
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", time_raw.strip(), re.I)
+    if not m:
+        return ""
+    hour = int(m.group(1))
+    minute = m.group(2) or "00"
+    meridiem = m.group(3).lower()
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}"
+
+
 def _parse_date(text: str):
-    """Parse date strings like 'March 15, 2026' or 'March 15–17, 2026'."""
+    """Parse date strings like 'March 15, 2026' or 'March 15–17, 2026'.
+    Returns (date_iso, time_str) where time_str is HH:MM 24h or ''."""
     if not text:
         return "", ""
     text = text.strip()
 
-    time_match = re.search(r"(\d{1,2}:\d{2})\s*(am|pm|AM|PM)?", text)
     time_str = ""
+    time_match = re.search(r"(\d{1,2}:\d{2})\s*(am|pm|AM|PM)?", text)
     if time_match:
-        time_str = time_match.group(1) + (" " + time_match.group(2) if time_match.group(2) else "")
+        raw_time = time_match.group(1)
+        meridiem = time_match.group(2) or ""
+        time_str = _to_24h(raw_time + " " + meridiem) if meridiem else raw_time
 
     date_match = re.search(
         r"(January|February|March|April|May|June|July|August|September|October|November|December)"
@@ -74,14 +94,23 @@ def _parse_date(text: str):
         year = int(year_match.group(1)) if year_match else datetime.now().year
         month_num = MONTHS.get(month.lower(), 1)
         try:
-            return datetime(year, month_num, day).strftime("%Y-%m-%d"), time_str
+            dt = datetime(year, month_num, day)
+            if dt.date() < date.today():
+                return "", ""
+            return dt.strftime("%Y-%m-%d"), time_str
         except ValueError:
             pass
 
     # Try ISO date in datetime attribute
     iso = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
     if iso:
-        return iso.group(1), time_str
+        iso_date = iso.group(1)
+        try:
+            if datetime.strptime(iso_date, "%Y-%m-%d").date() < date.today():
+                return "", ""
+        except ValueError:
+            pass
+        return iso_date, time_str
 
     return "", time_str
 
@@ -146,6 +175,8 @@ def scrape_nmaahc_events() -> List[Dict]:
                 if date_el:
                     raw = date_el.get("datetime") or date_el.get_text(strip=True)
                     date_str, time_str = _parse_date(raw)
+                if not date_str:
+                    continue
 
                 desc_el = card.select_one(".teaser__description, .teaser__body, p")
                 description = desc_el.get_text(strip=True) if desc_el else ""

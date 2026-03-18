@@ -1,76 +1,69 @@
 """
 Hirshhorn Museum and Sculpture Garden — Washington DC
-Events: https://hirshhorn.si.edu/art-and-programs/
+Events: https://hirshhorn.si.edu/events/
 
-Uses cloudscraper to handle JS challenges. Falls back across multiple URL paths.
+Uses The Events Calendar (Tribe) plugin — same as NBM.
+9 events/page; paginates via a.tribe-events-c-top-bar__nav-link--next href.
+
+Card structure (article.tribe_events):
+  time.datetime-day[datetime="YYYY-MM-DD"]     → date
+  time[datetime="HH:MM"] (2nd occurrence)       → start time (24h)
+  time[datetime="HH:MM"] (3rd occurrence)       → end time (24h)
+  .list-item-title                              → title + link
+  img                                           → thumbnail
 """
 
 import logging
 import re
-import cloudscraper
+import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
-HIRSHHORN_URLS = [
-    "https://hirshhorn.si.edu/art-and-programs/",
-    "https://hirshhorn.si.edu/explore/",
-]
+HIRSHHORN_URL  = "https://hirshhorn.si.edu/events/"
 HIRSHHORN_BASE = "https://hirshhorn.si.edu"
-LOCATION = "Hirshhorn Museum and Sculpture Garden, Independence Ave SW & 7th St SW, Washington, DC 20560"
+LOCATION = (
+    "Hirshhorn Museum and Sculpture Garden, "
+    "Independence Ave SW & 7th St SW, Washington, DC 20560"
+)
 BOROUGH = "National Mall"
 
-MONTHS = {
-    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
 }
 
 CATEGORY_MAP = {
-    "exhibition": "Arts & Culture",
-    "talk": "Heritage & History",
-    "lecture": "Heritage & History",
-    "opening": "Arts & Culture",
-    "tour": "Arts & Culture",
-    "film": "Arts & Culture",
-    "performance": "Arts & Culture",
-    "screening": "Arts & Culture",
-    "artist": "Arts & Culture",
-    "workshop": "Community",
-    "conversation": "Community",
+    "exhibition":   "Arts & Culture",
+    "tour":         "Arts & Culture",
+    "gallery":      "Arts & Culture",
+    "studio":       "Arts & Culture",
+    "art":          "Arts & Culture",
+    "talk":         "Heritage & History",
+    "lecture":      "Heritage & History",
+    "conversation": "Heritage & History",
+    "symposium":    "Heritage & History",
+    "film":         "Arts & Culture",
+    "screening":    "Arts & Culture",
+    "performance":  "Arts & Culture",
+    "concert":      "Music",
+    "music":        "Music",
+    "workshop":     "Community",
+    "family":       "Community",
+    "kids":         "Community",
+    "storytime":    "Community",
+    "teen":         "Community",
 }
 
 
-def _parse_date(text: str):
-    if not text:
-        return "", ""
-    text = text.strip()
-    time_match = re.search(r"(\d{1,2}:\d{2})\s*(am|pm)?", text, re.I)
-    time_str = time_match.group(0).strip() if time_match else ""
-    date_match = re.search(
-        r"(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
-        r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
-        r"\s+(\d{1,2})", text, re.I
-    )
-    year_match = re.search(r"\b(20\d{2})\b", text)
-    if date_match:
-        month_num = MONTHS.get(date_match.group(1).lower()[:3], 0)
-        day = int(date_match.group(2))
-        year = int(year_match.group(1)) if year_match else datetime.now().year
-        if month_num:
-            try:
-                return datetime(year, month_num, day).strftime("%Y-%m-%d"), time_str
-            except ValueError:
-                pass
-    iso = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
-    if iso:
-        return iso.group(1), time_str
-    return "", time_str
-
-
-def _infer_category(title: str, desc: str) -> str:
-    combined = (title + " " + desc).lower()
+def _infer_category(title: str, description: str) -> str:
+    combined = (title + " " + description).lower()
     for keyword, cat in CATEGORY_MAP.items():
         if keyword in combined:
             return cat
@@ -78,45 +71,31 @@ def _infer_category(title: str, desc: str) -> str:
 
 
 def scrape_hirshhorn_events() -> List[Dict]:
-    """Scrape events from the Hirshhorn Museum."""
-    events = []
+    """Scrape events from the Hirshhorn Museum and Sculpture Garden."""
+    events    = []
     seen_urls = set()
+    url       = HIRSHHORN_URL
 
-    try:
-        scraper = cloudscraper.create_scraper(
-            browser={"browser": "chrome", "platform": "darwin", "mobile": False}
-        )
+    while url:
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=20)
+            resp.raise_for_status()
+        except Exception as e:
+            logger.error(f"Hirshhorn: failed to fetch {url}: {e}")
+            break
 
-        soup = None
-        for url in HIRSHHORN_URLS:
+        soup  = BeautifulSoup(resp.text, "html.parser")
+        cards = soup.select("article.tribe_events, article[class*='tribe-events']")
+        logger.info(f"Hirshhorn: {url} — {len(cards)} cards")
+
+        if not cards:
+            break
+
+        for card in cards:
             try:
-                resp = scraper.get(url, timeout=18)
-                if resp.status_code == 200:
-                    soup = BeautifulSoup(resp.text, "html.parser")
-                    break
-            except Exception as e:
-                logger.debug(f"Hirshhorn: {url} failed: {e}")
-
-        if not soup:
-            logger.warning("Hirshhorn: could not load any events page")
-            return events
-
-        selectors = [
-            ".event-item", ".program-item", "article.post", "article.program",
-            ".card", ".listing-item", "[class*='event']", "[class*='program']", "article",
-        ]
-
-        cards = []
-        for sel in selectors:
-            found = soup.select(sel)
-            if found and len(found) > 1:
-                cards = found
-                break
-
-        for card in cards[:40]:
-            try:
+                # ── Title + URL ──────────────────────────────────────────
                 title_el = (
-                    card.select_one("[class*='title'],[class*='heading']")
+                    card.select_one(".list-item-title")
                     or card.find(["h2", "h3", "h4"])
                 )
                 if not title_el:
@@ -126,59 +105,110 @@ def scrape_hirshhorn_events() -> List[Dict]:
                     continue
 
                 link = title_el.find("a", href=True) or card.find("a", href=True)
-                url = ""
+                event_url = ""
                 if link:
-                    href = link["href"]
-                    url = href if href.startswith("http") else HIRSHHORN_BASE + href
-                if url in seen_urls:
+                    href = link.get("href", "")
+                    event_url = href if href.startswith("http") else HIRSHHORN_BASE + href
+                if event_url in seen_urls:
                     continue
-                if url:
-                    seen_urls.add(url)
+                if event_url:
+                    seen_urls.add(event_url)
 
-                date_el = (
-                    card.find("time")
-                    or card.select_one("[class*='date'],[class*='time'],[class*='when']")
-                )
-                date_str, time_str = "", ""
-                if date_el:
-                    raw = date_el.get("datetime") or date_el.get_text(strip=True)
-                    date_str, time_str = _parse_date(raw)
+                # ── Date + times ─────────────────────────────────────────
+                # time.datetime-day → date; subsequent time[datetime] → start, end
+                all_time_els = card.select("time[datetime]")
+                date_iso   = ""
+                time_str   = ""
+                end_time   = ""
 
-                desc_el = card.select_one("[class*='desc'],[class*='summary'],p")
-                description = desc_el.get_text(strip=True) if desc_el else ""
+                for t in all_time_els:
+                    dt_val = t.get("datetime", "")
+                    # Date: YYYY-MM-DD
+                    if re.match(r"^\d{4}-\d{2}-\d{2}$", dt_val):
+                        try:
+                            dt = datetime.strptime(dt_val, "%Y-%m-%d")
+                            if dt.date() >= date.today():
+                                date_iso = dt_val
+                        except ValueError:
+                            pass
+                    # Time: HH:MM (already in 24h format from the site)
+                    elif re.match(r"^\d{1,2}:\d{2}$", dt_val):
+                        hour, minute = dt_val.split(":")
+                        formatted = f"{int(hour):02d}:{minute}"
+                        if not time_str:
+                            time_str = formatted
+                        elif not end_time:
+                            end_time = formatted
 
-                img = card.find("img")
+                if not date_iso:
+                    continue
+
+                # ── Image ────────────────────────────────────────────────
+                img_el    = card.find("img")
                 image_url = ""
-                if img:
-                    src = img.get("src") or img.get("data-src") or ""
+                if img_el:
+                    src = img_el.get("src") or img_el.get("data-src") or ""
                     image_url = src if src.startswith("http") else (HIRSHHORN_BASE + src if src else "")
 
+                # ── Description ──────────────────────────────────────────
+                desc_el     = card.select_one(
+                    ".tribe-events-calendar-list__event-description, "
+                    ".list-item-excerpt, .tribe-common-b2, p"
+                )
+                description = desc_el.get_text(strip=True) if desc_el else ""
+
+                # ── Flags ────────────────────────────────────────────────
+                combined    = (title + " " + description).lower()
+                is_family   = any(w in combined for w in ["family", "kids", "children", "all ages", "storytime"])
+                is_outdoor  = any(w in combined for w in ["outdoor", "garden", "plaza", "sculpture garden"])
+
                 events.append({
-                    "title": title,
-                    "date": date_str,
-                    "time": time_str,
-                    "end_time": "",
-                    "location": LOCATION,
-                    "location_name": "Hirshhorn Museum and Sculpture Garden",
-                    "location_address": "Independence Ave SW & 7th St SW, Washington, DC 20560",
-                    "neighborhood": "National Mall",
-                    "description": description[:400],
-                    "url": url,
-                    "category": _infer_category(title, description),
-                    "source": "Hirshhorn Museum",
-                    "borough": BOROUGH,
-                    "image_url": image_url,
-                    "price": "Free",
-                    "is_free": True,
-                    "is_family_friendly": any(w in (title+" "+description).lower() for w in ["family","kids","children","all ages"]),
-                    "is_outdoor": any(w in (title+" "+description).lower() for w in ["outdoor","garden","plaza","open air"]),
-                    "city": "Washington DC",
+                    "title":              title,
+                    "date":               date_iso,
+                    "end_date":           "",
+                    "time":               time_str,
+                    "end_time":           end_time,
+                    "location":           LOCATION,
+                    "location_name":      "Hirshhorn Museum and Sculpture Garden",
+                    "location_address":   "Independence Ave SW & 7th St SW, Washington, DC 20560",
+                    "neighborhood":       "National Mall",
+                    "description":        description[:400],
+                    "url":                event_url,
+                    "category":           _infer_category(title, description),
+                    "source":             "Hirshhorn Museum",
+                    "borough":            BOROUGH,
+                    "image_url":          image_url,
+                    "price":              "Free",
+                    "is_free":            True,
+                    "is_family_friendly": is_family,
+                    "is_outdoor":         is_outdoor,
+                    "city":               "Washington DC",
                 })
+
             except Exception as e:
                 logger.debug(f"Hirshhorn: error parsing card: {e}")
 
-    except Exception as e:
-        logger.error(f"Hirshhorn scraper failed: {e}")
+        # ── Pagination — cap at 60 events (~7 pages) ─────────────────────
+        if len(events) >= 60:
+            break
+        next_link = soup.select_one(
+            "a.tribe-events-c-top-bar__nav-link--next, "
+            "a[aria-label='Next Events']"
+        )
+        if not next_link:
+            break
+        next_href = next_link.get("href", "")
+        url = next_href if next_href.startswith("http") else HIRSHHORN_BASE + next_href
 
     logger.info(f"Hirshhorn: scraped {len(events)} events")
     return events
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    results = scrape_hirshhorn_events()
+    print(f"\nFound {len(results)} Hirshhorn events:")
+    for ev in results:
+        end = f" → {ev['end_time']}" if ev.get("end_time") else ""
+        print(f"  [{ev['date']}] {ev['title']}")
+        print(f"           {ev['time']}{end} | {ev['category']}")

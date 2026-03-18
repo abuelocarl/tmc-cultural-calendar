@@ -18,7 +18,7 @@ import logging
 import re
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 from urllib.parse import urljoin
 
@@ -47,14 +47,17 @@ CATEGORY_MAP = {
 
 
 def _parse_evd(evd: str) -> tuple:
-    """Parse evd=YYYYMMDDHHmm into (date_iso, time_str)."""
+    """Parse evd=YYYYMMDDHHmm into (date_iso, time_str); returns ('','') for past dates."""
     if not evd or len(evd) < 8:
         return "", ""
     try:
         year = int(evd[0:4])
         month = int(evd[4:6])
         day = int(evd[6:8])
-        date_str = datetime(year, month, day).strftime("%Y-%m-%d")
+        dt = datetime(year, month, day)
+        if dt.date() < date.today():
+            return "", ""
+        date_str = dt.strftime("%Y-%m-%d")
         time_str = ""
         if len(evd) >= 12:
             hour = int(evd[8:10])
@@ -118,6 +121,10 @@ def scrape_nga_events() -> List[Dict]:
                     evd_match = re.search(r"evd=(\d+)", href)
                     if evd_match:
                         date_str, time_str = _parse_evd(evd_match.group(1))
+
+                # Skip events without a valid future date (e.g. exhibitions)
+                if not date_str:
+                    continue
 
                 if url in seen_urls:
                     continue

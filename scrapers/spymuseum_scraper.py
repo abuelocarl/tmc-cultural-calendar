@@ -34,7 +34,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -68,16 +68,33 @@ CATEGORY_MAP = {
 }
 
 
+def _to_24h(time_raw: str) -> str:
+    """Convert '6:30 PM', '11:00 AM', '12:00 PM' → '18:30', '11:00', '12:00'."""
+    if not time_raw:
+        return ""
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", time_raw.strip(), re.I)
+    if not m:
+        return ""
+    hour = int(m.group(1))
+    minute = m.group(2) or "00"
+    meridiem = m.group(3).lower()
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}"
+
+
 def _parse_spy_date(month_abbr: str, day: str) -> str:
-    """Parse month abbreviation + day into YYYY-MM-DD."""
+    """Parse month abbreviation + day into YYYY-MM-DD; returns '' for past dates."""
     month_num = MONTH_ABBR.get(month_abbr.lower()[:3], 0)
     if not month_num:
         return ""
     year = datetime.now().year
     try:
         dt = datetime(year, month_num, int(day))
-        # If the date is in the past by more than 30 days, assume next year
-        if (dt - datetime.now()).days < -30:
+        # If the date is in the past, assume next year
+        if dt.date() < date.today():
             dt = datetime(year + 1, month_num, int(day))
         return dt.strftime("%Y-%m-%d")
     except ValueError:
@@ -147,10 +164,10 @@ def scrape_spymuseum_events() -> List[Dict]:
                 time_str = ""
                 if time_el:
                     raw = time_el.get_text(strip=True)
-                    # Clean up e.g. "6:30 PM  ET" → "6:30 PM"
+                    # Clean up e.g. "6:30 PM  ET" → convert to 24h
                     m = re.search(r"(\d{1,2}:\d{2}\s*(?:AM|PM))", raw, re.I)
                     if m:
-                        time_str = m.group(1).strip()
+                        time_str = _to_24h(m.group(1))
 
                 # Description (not always present in list view)
                 desc_el = card.select_one(".event_description, .event_body p")
