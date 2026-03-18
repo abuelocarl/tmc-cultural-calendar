@@ -5,7 +5,7 @@ Scrapes upcoming ticketed events from https://www.amnh.org/calendar
 
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 import logging
 import re
 from typing import List, Dict
@@ -29,12 +29,47 @@ CATEGORY_MAP = {
 }
 
 
+def _to_24h(time_raw: str) -> str:
+    """Convert '7 pm', '6:30 PM', '11 am', '12:00 pm' → '19:00', '18:30', '11:00', '12:00'."""
+    if not time_raw:
+        return ""
+    t = time_raw.strip().replace("\xa0", " ")
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", t, re.I)
+    if not m:
+        return ""
+    hour = int(m.group(1))
+    minute = m.group(2) or "00"
+    meridiem = m.group(3).lower()
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}"
+
+
+def _parse_time_range(raw: str):
+    """Parse '6–8 pm', '11 am–4 pm', '7 pm' → (start_24h, end_24h)."""
+    if not raw:
+        return "", ""
+    raw = raw.replace("\u2013", "-").replace("\u2014", "-")  # en/em dash → hyphen
+    # Range: "6-8 pm", "11 am-4 pm"
+    range_m = re.match(
+        r"(\d{1,2}(?::\d{2})?)\s*(am|pm)?\s*-\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)",
+        raw.strip(), re.I
+    )
+    if range_m:
+        s_num, s_mer, e_num, e_mer = range_m.groups()
+        s_mer = s_mer or e_mer  # "6-8 pm" → s_mer=None, borrow end's meridiem
+        return _to_24h(f"{s_num} {s_mer}"), _to_24h(f"{e_num} {e_mer}")
+    return _to_24h(raw.strip()), ""
+
+
 def _parse_date_time(date_str: str):
     """
     Parse AMNH date text like:
       'Tuesday, March 17, 2026 | Sold Out 7 pm'
       'Saturday, April 18, 2026 11 am–4 pm'
-    Returns (date_iso, time_str).
+    Returns (date_iso, raw_time_str).  raw_time_str may be a range like '6–8 pm'.
     """
     if not date_str:
         return "", ""
@@ -51,7 +86,8 @@ def _parse_date_time(date_str: str):
     if date_match:
         try:
             dt = datetime.strptime(date_match.group(0), "%B %d, %Y")
-            date_iso = dt.strftime("%Y-%m-%d")
+            if dt.date() >= date.today():
+                date_iso = dt.strftime("%Y-%m-%d")
         except ValueError:
             pass
 
@@ -133,7 +169,9 @@ def scrape_amnh_events() -> List[Dict]:
             if first:
                 image_url = first if first.startswith("http") else BASE_URL + first
 
-        date_iso, time_str = _parse_date_time(date_text)
+        date_iso, raw_time = _parse_date_time(date_text)
+        if not date_iso:
+            continue
         sold_out = bool(re.search(r"sold\s*out", date_text, re.I))
 
         normalized_category = CATEGORY_MAP.get(
@@ -146,12 +184,8 @@ def scrape_amnh_events() -> List[Dict]:
         is_family = any(w in link_text for w in ["family", "kids", "children", "all ages"])
         is_after_hours = category_raw.lower() == "after-hours program"
 
-        # End-time from range in time_str "7–10 pm"
-        end_time = ""
-        if time_str:
-            range_m = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", time_str, re.I)
-            if range_m:
-                end_time = range_m.group(1).strip()
+        # Convert time range to 24h start + end
+        time_str, end_time = _parse_time_range(raw_time)
 
         price = "Sold Out" if sold_out else ("Free" if is_free else "See website")
 
@@ -175,6 +209,7 @@ def scrape_amnh_events() -> List[Dict]:
             "is_free": is_free,
             "is_family_friendly": is_family,
             "is_after_hours": is_after_hours,
+            "city": "New York",
         })
 
     # Deduplicate by URL

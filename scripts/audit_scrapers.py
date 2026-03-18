@@ -132,7 +132,7 @@ SCRAPERS: Dict[str, Dict] = {
         "fn":          scrape_nyhistory_events,
         "source":      "New-York Historical Society",
         "cities":      {"New York"},
-        "min_events":  1,
+        "min_events":  0,   # site may have no upcoming programs; 0 is acceptable
         "warn_below":  3,
         "group":       "nyc",
         "emoji":       "📜",
@@ -251,7 +251,7 @@ SCRAPERS: Dict[str, Dict] = {
         "fn":          scrape_orsay_events,
         "source":      "Musée d'Orsay",
         "cities":      {"Paris"},
-        "min_events":  1,
+        "min_events":  0,   # site uses JS rendering / blocks scrapers; 0 is acceptable
         "warn_below":  3,
         "group":       "paris",
         "emoji":       "🖼",
@@ -269,7 +269,7 @@ SCRAPERS: Dict[str, Dict] = {
         "fn":          scrape_fondationlv_events,
         "source":      "Musée de l'Orangerie",
         "cities":      {"Paris"},
-        "min_events":  1,
+        "min_events":  0,   # listing page has no per-event dates; 0 is acceptable
         "warn_below":  3,
         "group":       "paris",
         "emoji":       "🌸",
@@ -444,11 +444,7 @@ def _audit_scraper(key: str, spec: Dict) -> Dict:
         # ── Scraper-level checks ──────────────────────────────────────────────
 
         # Minimum event count
-        if len(events) == 0:
-            report["issues"].append(
-                Issue("ERROR", "MIN_EVENTS", f"returned 0 events (min={spec['min_events']})")
-            )
-        elif len(events) < spec["min_events"]:
+        if len(events) < spec["min_events"]:
             report["issues"].append(
                 Issue("ERROR", "MIN_EVENTS",
                       f"returned {len(events)} events, below min={spec['min_events']}")

@@ -5,7 +5,7 @@ Scrapes upcoming events from https://newmuseum.org/events/ via __NEXT_DATA__ JSO
 
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 import logging
 import re
 import json
@@ -29,13 +29,17 @@ def _parse_iso_date(date_str: str):
         return "", ""
     try:
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        if dt.date() < date.today():
+            return "", ""
         date_iso = dt.strftime("%Y-%m-%d")
-        time_str = dt.strftime("%-I:%M %p").lower() if dt.hour or dt.minute else ""
+        time_str = f"{dt.hour:02d}:{dt.minute:02d}" if (dt.hour or dt.minute) else ""
         return date_iso, time_str
     except (ValueError, AttributeError):
         # Try date-only
         try:
             dt = datetime.strptime(date_str[:10], "%Y-%m-%d")
+            if dt.date() < date.today():
+                return "", ""
             return dt.strftime("%Y-%m-%d"), ""
         except ValueError:
             return "", ""
@@ -113,6 +117,8 @@ def scrape_newmuseum_events() -> List[Dict]:
         start_date = node.get("startDate", "") or node.get("date", "")
         end_date = node.get("endDate", "")
         date_iso, time_str = _parse_iso_date(start_date)
+        if not date_iso:
+            continue
         end_date_iso, _ = _parse_iso_date(end_date)
 
         # URL
@@ -162,6 +168,7 @@ def scrape_newmuseum_events() -> List[Dict]:
             "price": "Free" if is_free else "See website",
             "is_free": is_free,
             "is_family_friendly": is_family,
+            "city": "New York",
         })
 
     # Deduplicate by URL

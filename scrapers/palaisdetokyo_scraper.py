@@ -24,7 +24,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,10 @@ def _parse_fr_date(text: str):
         year = int(year_m.group(1)) if year_m else datetime.now().year
         if month_num:
             try:
-                return datetime(year, month_num, day).strftime("%Y-%m-%d"), time_str
+                dt = datetime(year, month_num, day)
+                if dt.date() < date.today():
+                    return "", time_str
+                return dt.strftime("%Y-%m-%d"), time_str
             except ValueError:
                 pass
     return "", time_str
@@ -149,6 +152,8 @@ def scrape_palaisdetokyo_events() -> List[Dict]:
                 # Date + time from p.e__text
                 text_el = card.select_one("p.e__text, [class*='e__text']")
                 date_str, time_str = _parse_fr_date(text_el.get_text(strip=True)) if text_el else ("", "")
+                if not date_str:
+                    continue
 
                 # Category from p.e__tag
                 tags = [t.get_text(strip=True) for t in card.select("p.e__tag")]

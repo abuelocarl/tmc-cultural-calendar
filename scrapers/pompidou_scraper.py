@@ -26,7 +26,7 @@ import logging
 import re
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,10 @@ def _parse_fr_date(text: str) -> str:
         year = int(m.group(3)) if m.group(3) else datetime.now().year
         if month_num:
             try:
-                return datetime(year, month_num, day).strftime("%Y-%m-%d")
+                dt = datetime(year, month_num, day)
+                if dt.date() < date.today():
+                    return ""
+                return dt.strftime("%Y-%m-%d")
             except ValueError:
                 pass
     return ""
@@ -152,6 +155,8 @@ def scrape_pompidou_events() -> List[Dict]:
                 # Date
                 date_el = card.select_one(".dateEvenement, [class*='date']")
                 date_str = _parse_fr_date(date_el.get_text(strip=True)) if date_el else ""
+                if not date_str:
+                    continue
 
                 # Category
                 type_el = card.select_one(".card-type, .event-type, [class*='type']")

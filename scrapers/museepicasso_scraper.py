@@ -10,7 +10,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -47,11 +47,51 @@ CATEGORY_MAP = {
 
 
 def _parse_date(text: str) -> str:
+    """
+    Parse date from text. Handles:
+    - ISO: '2026-03-12'
+    - Plain: '12 March 2026'
+    - Range: 'From 12 March 2024 to 12 March 2027' — uses today if ongoing, start if future
+    """
     if not text:
         return ""
+    today = date.today()
+
+    # ISO date
     iso = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
     if iso:
-        return iso.group(1)
+        d = iso.group(1)
+        try:
+            if datetime.strptime(d, "%Y-%m-%d").date() < today:
+                return ""
+        except ValueError:
+            pass
+        return d
+
+    # "From DD Month YYYY to DD Month YYYY" range pattern
+    range_m = re.search(
+        r"[Ff]rom\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|"
+        r"September|October|November|December)\s+(\d{4})\s+to\s+(\d{1,2})\s+"
+        r"(January|February|March|April|May|June|July|August|September|October|"
+        r"November|December)\s+(\d{4})", text, re.I
+    )
+    if range_m:
+        try:
+            start_dt = datetime.strptime(
+                f"{range_m.group(1)} {range_m.group(2)} {range_m.group(3)}", "%d %B %Y"
+            )
+            end_dt = datetime.strptime(
+                f"{range_m.group(4)} {range_m.group(5)} {range_m.group(6)}", "%d %B %Y"
+            )
+            if end_dt.date() < today:
+                return ""  # exhibition has ended
+            if start_dt.date() <= today:
+                return today.strftime("%Y-%m-%d")  # ongoing — use today
+            return start_dt.strftime("%Y-%m-%d")  # future start
+        except ValueError:
+            pass
+
+    # Single plain date
     date_match = re.search(
         r"(\d{1,2})\s+(January|February|March|April|May|June|July|August|"
         r"September|October|November|December)\s*(\d{4})?", text, re.I
@@ -61,9 +101,10 @@ def _parse_date(text: str) -> str:
         year_s = date_match.group(3)
         year = int(year_s) if year_s else datetime.now().year
         try:
-            return datetime.strptime(
-                f"{day} {date_match.group(2)} {year}", "%d %B %Y"
-            ).strftime("%Y-%m-%d")
+            dt = datetime.strptime(f"{day} {date_match.group(2)} {year}", "%d %B %Y")
+            if dt.date() < today:
+                return ""
+            return dt.strftime("%Y-%m-%d")
         except ValueError:
             pass
     return ""
@@ -97,17 +138,18 @@ def scrape_museepicasso_events() -> List[Dict]:
             logger.warning("Picasso Museum: could not load agenda page")
             return events
 
-        selectors = [
-            ".event-card", ".event-item", ".agenda-item",
-            "[class*='event']", "[class*='agenda']", "article",
-        ]
-
-        cards = []
-        for sel in selectors:
-            found = soup.select(sel)
-            if found and len(found) > 1:
-                cards = found
-                break
+        # Picasso agenda uses <article class="node exhibition ..."> cards
+        cards = soup.find_all("article", class_=re.compile(r"node"))
+        if not cards:
+            selectors = [
+                ".event-card", ".event-item", ".agenda-item",
+                "[class*='event']", "[class*='agenda']",
+            ]
+            for sel in selectors:
+                found = soup.select(sel)
+                if found and len(found) > 1:
+                    cards = found
+                    break
 
         for card in cards[:40]:
             try:
@@ -118,6 +160,8 @@ def scrape_museepicasso_events() -> List[Dict]:
                 if not title_el:
                     continue
                 title = title_el.get_text(strip=True)
+                # Strip leading noise like "Image Image"
+                title = re.sub(r"^(?:Image\s+)+", "", title).strip()
                 if not title or len(title) < 3:
                     continue
 
@@ -131,11 +175,17 @@ def scrape_museepicasso_events() -> List[Dict]:
                 if url:
                     seen_urls.add(url)
 
+                # Date: try <time>, [class*='date'], or full card text (for "From X to Y" range)
                 date_el = card.find("time") or card.select_one("[class*='date']")
                 date_str = ""
                 if date_el:
                     raw = date_el.get("datetime") or date_el.get_text(strip=True)
                     date_str = _parse_date(raw)
+                if not date_str:
+                    # Fall back to full card text (handles "From DD Month YYYY to DD Month YYYY")
+                    date_str = _parse_date(card.get_text(" ", strip=True))
+                if not date_str:
+                    continue
 
                 desc_el = card.select_one("[class*='desc'],[class*='summary'],p")
                 description = desc_el.get_text(strip=True) if desc_el else ""

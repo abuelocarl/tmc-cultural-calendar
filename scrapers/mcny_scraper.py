@@ -5,7 +5,7 @@ Scrapes upcoming events from https://www.mcny.org/events
 
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 import logging
 import re
 from typing import List, Dict
@@ -20,6 +20,24 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
 }
+
+
+def _to_24h(time_raw: str) -> str:
+    """Convert '6:30pm', '7 pm', '12pm' → '18:30', '19:00', '12:00'."""
+    if not time_raw:
+        return ""
+    t = time_raw.strip().replace("\xa0", " ")
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", t, re.I)
+    if not m:
+        return ""
+    hour = int(m.group(1))
+    minute = m.group(2) or "00"
+    meridiem = m.group(3).lower()
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}"
 
 
 def _parse_mcny_date(date_str: str):
@@ -46,12 +64,14 @@ def _parse_mcny_date(date_str: str):
             dt = datetime.strptime(date_part, fmt)
             if fmt == "%B %d":
                 dt = dt.replace(year=datetime.today().year)
+            if dt.date() < date.today():
+                return "", ""
             date_iso = dt.strftime("%Y-%m-%d")
             break
         except ValueError:
             continue
 
-    return date_iso, time_str
+    return date_iso, _to_24h(time_str)
 
 
 def scrape_mcny_events() -> List[Dict]:
@@ -88,6 +108,8 @@ def scrape_mcny_events() -> List[Dict]:
         date_el = card.find("span", class_="date")
         date_str = date_el.get_text(strip=True) if date_el else ""
         date_iso, time_str = _parse_mcny_date(date_str)
+        if not date_iso:
+            continue
 
         # Category: <span class="category"><a>
         cat_el = card.find("span", class_="category")
@@ -128,6 +150,7 @@ def scrape_mcny_events() -> List[Dict]:
             "price": "Free" if is_free else "See website",
             "is_free": is_free,
             "is_family_friendly": is_family,
+            "city": "New York",
         })
 
     # Deduplicate by URL

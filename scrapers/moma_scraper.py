@@ -29,6 +29,45 @@ CATEGORY_MAP = {
 }
 
 
+def _to_24h(time_raw: str) -> str:
+    """Convert MoMA time formats to HH:MM 24h.
+    Handles: '4:00\xa0p.m.', '6:00–8:00\xa0p.m.', '7:00 p.m.', '10:00 a.m.'
+    Returns only the start time (ignores range end).
+    """
+    if not time_raw:
+        return ""
+    # Normalize non-breaking space and p.m./a.m. notation
+    t = time_raw.replace("\xa0", " ")
+    t = re.sub(r"p\.m\.", "pm", t, flags=re.I)
+    t = re.sub(r"a\.m\.", "am", t, flags=re.I)
+    # Extract only the start time (before any range separator)
+    t = re.split(r"[–\-]", t)[0].strip()
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", t, re.I)
+    if not m:
+        return ""
+    hour = int(m.group(1))
+    minute = m.group(2) or "00"
+    meridiem = m.group(3).lower()
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}"
+
+
+def _to_24h_end(time_raw: str) -> str:
+    """Extract end time from range like '6:00–8:00\xa0p.m.' → '20:00'."""
+    if not time_raw:
+        return ""
+    t = time_raw.replace("\xa0", " ")
+    t = re.sub(r"p\.m\.", "pm", t, flags=re.I)
+    t = re.sub(r"a\.m\.", "am", t, flags=re.I)
+    parts = re.split(r"[–\-]", t)
+    if len(parts) < 2:
+        return ""
+    return _to_24h(parts[1].strip())
+
+
 def _parse_moma_date(date_str: str) -> str:
     """
     Parse MoMA date strings like 'Sun, Mar 15' or 'Mon, Mar 16' into ISO format.
@@ -126,7 +165,9 @@ def _parse_and_append(link, date_iso: str, events: List[Dict]) -> None:
 
     # All scale-down paragraphs: [0]=time, [1]=location, [2]=event type
     detail_paras = link.find_all("p", class_=re.compile(r"scale:down|scale-down"))
-    time_str = detail_paras[0].get_text(strip=True) if len(detail_paras) > 0 else ""
+    raw_time    = detail_paras[0].get_text(strip=True) if len(detail_paras) > 0 else ""
+    time_str    = _to_24h(raw_time)
+    end_time_cv = _to_24h_end(raw_time)
     location_raw = detail_paras[1].get_text(strip=True) if len(detail_paras) > 1 else ""
     event_type = detail_paras[2].get_text(strip=True) if len(detail_paras) > 2 else ""
 
@@ -147,19 +188,12 @@ def _parse_and_append(link, date_iso: str, events: List[Dict]) -> None:
         is_family = True
     price = "Free" if is_free else "See website"
 
-    # End-time extraction from ranges like "6–8 pm"
-    end_time = ""
-    if time_str:
-        range_m = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", time_str, re.I)
-        if range_m:
-            end_time = range_m.group(1).strip()
-
     events.append({
         "title": title,
         "date": date_iso,
         "end_date": "",
         "time": time_str,
-        "end_time": end_time,
+        "end_time": end_time_cv,
         "location": full_location,
         "location_name": loc_name,
         "location_address": loc_addr,
@@ -173,6 +207,7 @@ def _parse_and_append(link, date_iso: str, events: List[Dict]) -> None:
         "price": price,
         "is_free": is_free,
         "is_family_friendly": is_family,
+        "city": "New York",
     })
 
 

@@ -9,7 +9,7 @@ import logging
 import re
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,13 @@ def _parse_date(text: str) -> str:
         return ""
     iso = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
     if iso:
-        return iso.group(1)
+        d = iso.group(1)
+        try:
+            if datetime.strptime(d, "%Y-%m-%d").date() < date.today():
+                return ""
+        except ValueError:
+            pass
+        return d
     date_match = re.search(
         r"(\d{1,2})\s+(January|February|March|April|May|June|July|August|"
         r"September|October|November|December)\s*(\d{4})?", text, re.I
@@ -55,7 +61,10 @@ def _parse_date(text: str) -> str:
         year_s = date_match.group(3)
         year = int(year_s) if year_s else datetime.now().year
         try:
-            return datetime.strptime(f"{day} {month_str} {year}", "%d %B %Y").strftime("%Y-%m-%d")
+            dt = datetime.strptime(f"{day} {month_str} {year}", "%d %B %Y")
+            if dt.date() < date.today():
+                return ""
+            return dt.strftime("%Y-%m-%d")
         except ValueError:
             pass
     return ""
@@ -132,6 +141,8 @@ def scrape_orsay_events() -> List[Dict]:
                 if date_el:
                     raw = date_el.get("datetime") or date_el.get_text(strip=True)
                     date_str = _parse_date(raw)
+                if not date_str:
+                    continue
 
                 desc_el = card.select_one("[class*='desc'],[class*='summary'],p")
                 description = desc_el.get_text(strip=True) if desc_el else ""

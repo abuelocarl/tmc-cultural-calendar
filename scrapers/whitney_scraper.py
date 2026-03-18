@@ -5,7 +5,7 @@ Scrapes upcoming events from https://whitney.org/events
 
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 import logging
 import re
 from typing import List, Dict
@@ -20,6 +20,24 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
 }
+
+
+def _to_24h(time_raw: str) -> str:
+    """Convert '1 pm', '12 pm', '3:30 pm' → '13:00', '12:00', '15:30'."""
+    if not time_raw:
+        return ""
+    t = time_raw.strip().replace("\xa0", " ")
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", t, re.I)
+    if not m:
+        return ""
+    hour = int(m.group(1))
+    minute = m.group(2) or "00"
+    meridiem = m.group(3).lower()
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}"
 
 
 def _parse_whitney_date(date_str: str):
@@ -41,7 +59,8 @@ def _parse_whitney_date(date_str: str):
     date_iso = ""
     try:
         dt = datetime.strptime(date_part, "%B %d, %Y")
-        date_iso = dt.strftime("%Y-%m-%d")
+        if dt.date() >= date.today():
+            date_iso = dt.strftime("%Y-%m-%d")
     except ValueError:
         pass
 
@@ -105,12 +124,18 @@ def scrape_whitney_events() -> List[Dict]:
         is_outdoor = any(w in link_text for w in ["outdoor", "terrace", "garden", "open air"])
         price = "Free" if is_free else "See website"
 
-        # Extract end_time from ranges like "1–3 pm"
+        # Convert time to 24h; extract end time from ranges like "1–3 pm"
         end_time = ""
         if time_str:
-            range_m = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*$", time_str, re.I)
+            range_m = re.search(r"[-–]\s*(\d{1,2}(?::\d{2})?(?:\s*(?:am|pm))?)\s*$", time_str, re.I)
             if range_m:
-                end_time = range_m.group(1).strip()
+                end_raw = range_m.group(1).strip()
+                if not re.search(r"am|pm", end_raw, re.I):
+                    mer_m = re.search(r"(am|pm)", time_str, re.I)
+                    if mer_m:
+                        end_raw += " " + mer_m.group(1)
+                end_time = _to_24h(end_raw)
+            time_str = _to_24h(re.split(r"[–\-]", time_str)[0].strip())
 
         events.append({
             "title": title,
@@ -132,6 +157,7 @@ def scrape_whitney_events() -> List[Dict]:
             "is_free": is_free,
             "is_family_friendly": is_family,
             "is_outdoor": is_outdoor,
+            "city": "New York",
         })
 
     # Deduplicate by URL

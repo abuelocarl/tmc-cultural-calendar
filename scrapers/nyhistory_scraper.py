@@ -5,7 +5,7 @@ Scrapes upcoming programs from https://www.nyhistory.org/programs
 
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date
 import logging
 import re
 from typing import List, Dict
@@ -26,6 +26,26 @@ LINK_CLASS = re.compile(r"HalfSlildeItem_link|FullSlideItem_container")
 TITLE_CLASS = re.compile(r"HalfSlildeItem_title|FullSlideItem_title")
 DATE_CLASS = re.compile(r"HalfSlildeItem_date|FullSlideItem_date")
 EYEBROW_CLASS = re.compile(r"HalfSlildeItem_eyebrow|FullSlideItem_eyebrow")
+
+
+def _to_24h(time_raw: str) -> str:
+    """Convert '6:30pm', '7 pm', '12pm' → '18:30', '19:00', '12:00'."""
+    if not time_raw:
+        return ""
+    t = time_raw.strip().replace("\xa0", " ")
+    # Handle ranges — take only start time
+    t = re.split(r"[-–]", t)[0].strip()
+    m = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", t, re.I)
+    if not m:
+        return ""
+    hour = int(m.group(1))
+    minute = m.group(2) or "00"
+    meridiem = m.group(3).lower()
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute}"
 
 
 def _parse_nyhistory_date(date_str: str):
@@ -50,12 +70,14 @@ def _parse_nyhistory_date(date_str: str):
             dt = datetime.strptime(date_part, fmt)
             if fmt == "%B %d":
                 dt = dt.replace(year=datetime.today().year)
+            if dt.date() < date.today():
+                return "", ""
             date_iso = dt.strftime("%Y-%m-%d")
             break
         except ValueError:
             continue
 
-    return date_iso, time_str
+    return date_iso, _to_24h(time_str)
 
 
 def scrape_nyhistory_events() -> List[Dict]:
@@ -142,6 +164,7 @@ def scrape_nyhistory_events() -> List[Dict]:
             "price": "Free" if is_free else "See website",
             "is_free": is_free,
             "is_family_friendly": is_family,
+            "city": "New York",
         })
 
     # Filter to upcoming events only and deduplicate by URL
@@ -149,7 +172,7 @@ def scrape_nyhistory_events() -> List[Dict]:
     seen = set()
     unique = []
     for e in events:
-        if e["url"] not in seen and (not e["date"] or e["date"] >= today):
+        if e["url"] not in seen and (e["date"] and e["date"] >= today):
             seen.add(e["url"])
             unique.append(e)
 

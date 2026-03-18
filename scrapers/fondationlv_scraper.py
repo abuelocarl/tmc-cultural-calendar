@@ -123,6 +123,9 @@ def scrape_fondationlv_events() -> List[Dict]:
                         mins = t_m.group(2) or "00"
                         time_str = f"{h:02d}:{mins}"
 
+                if not date_str:
+                    continue
+
                 # Category from event-type
                 type_el = card.select_one(".field__item, .event-type")
                 type_text = type_el.get_text(strip=True) if type_el else ""
