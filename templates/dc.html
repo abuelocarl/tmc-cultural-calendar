@@ -227,6 +227,15 @@
       ("International Spy Museum",
        "🕵", "International Spy Museum",
        "https://www.spymuseum.org/calendar"),
+      ("Smithsonian American Art Museum",
+       "🎨", "American Art Museum",
+       "https://americanart.si.edu/events"),
+      ("National Postal Museum",
+       "📬", "National Postal Museum",
+       "https://postalmuseum.si.edu/visit/calendar"),
+      ("US Holocaust Memorial Museum",
+       "🕯", "Holocaust Memorial Museum",
+       "https://www.ushmm.org/online-calendar"),
     ] %}
     {% for source, icon, short_name, ext_url in museum_data %}
     {% set count = meta.events | selectattr('source', 'equalto', source) | list | length %}
