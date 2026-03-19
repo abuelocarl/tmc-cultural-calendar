@@ -55,6 +55,7 @@ from scrapers.orsay_scraper      import scrape_orsay_events
 from scrapers.palaisdetokyo_scraper import scrape_palaisdetokyo_events
 from scrapers.fondationlv_scraper   import scrape_fondationlv_events
 from scrapers.museepicasso_scraper  import scrape_museepicasso_events
+from scrapers.saam_scraper          import scrape_saam_events
 
 # ── Validation patterns ───────────────────────────────────────────────────────
 DATE_RE         = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -227,6 +228,15 @@ SCRAPERS: Dict[str, Dict] = {
         "warn_below":  20,
         "group":       "dc",
         "emoji":       "🏯",
+    },
+    "saam": {
+        "fn":          scrape_saam_events,
+        "source":      "Smithsonian American Art Museum",
+        "cities":      {"Washington DC"},
+        "min_events":  1,
+        "warn_below":  5,
+        "group":       "dc",
+        "emoji":       "🎨",
     },
     # ── Paris ─────────────────────────────────────────────────────────────────
     "pompidou": {
