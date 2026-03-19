@@ -316,6 +316,9 @@ def consolidate_events(
     nbm_events: List[Dict] = None,
     spymuseum_events: List[Dict] = None,
     nmaa_events: List[Dict] = None,
+    saam_events: List[Dict] = None,
+    npm_events: List[Dict] = None,
+    ushmm_events: List[Dict] = None,
     # Paris sources
     pompidou_events: List[Dict] = None,
     louvre_events: List[Dict] = None,
@@ -348,6 +351,9 @@ def consolidate_events(
         ("National Building Museum", nbm_events),
         ("Spy Museum", spymuseum_events),
         ("National Museum of Asian Art", nmaa_events),
+        ("Smithsonian American Art Museum", saam_events),
+        ("National Postal Museum", npm_events),
+        ("US Holocaust Memorial Museum", ushmm_events),
         # Paris
         ("Pompidou", pompidou_events),
         ("Louvre", louvre_events),
