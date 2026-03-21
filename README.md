@@ -1,6 +1,6 @@
 # 🎭 TMC Cultural Calendar
 
-A full-stack web application that scrapes and aggregates cultural events across New York City from multiple sources, presenting them in a beautiful editorial-style calendar and management interface.
+A full-stack web application that scrapes and aggregates cultural events from world-class museums and institutions across **New York City**, **Washington DC**, and **Paris** — presented in an editorial-style calendar.
 
 ![TMC Cultural Calendar](https://img.shields.io/badge/TMC-Cultural%20Calendar-gold?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.9+-blue?style=flat-square)
@@ -10,21 +10,59 @@ A full-stack web application that scrapes and aggregates cultural events across 
 
 ## 📡 Data Sources
 
+### 🗽 New York City
 | Source | Description |
 |--------|-------------|
 | **NYC.gov Parks** | Free events from NYC Parks & Cultural Affairs |
 | **Eventbrite NYC** | Arts, music, festivals, and community events |
 | **TimeOut New York** | Curated picks — art shows, concerts, theater, dance |
+| **The Met** | Metropolitan Museum of Art |
+| **MoMA** | Museum of Modern Art |
+| **Whitney Museum** | Whitney Museum of American Art |
+| **AMNH** | American Museum of Natural History |
+| **Museum of the City of NY** | MCNY |
+| **New Museum** | Contemporary art |
+| **NY Historical Society** | New-York Historical Society |
+
+### 🏛 Washington DC
+| Source | Description |
+|--------|-------------|
+| **National Gallery of Art** | NGA |
+| **Hirshhorn Museum** | Hirshhorn Museum and Sculpture Garden |
+| **Smithsonian NMNH** | National Museum of Natural History |
+| **Smithsonian NMAH** | National Museum of American History |
+| **Air and Space Museum** | National Air and Space Museum |
+| **American Indian Museum** | National Museum of the American Indian |
+| **National Museum of Asian Art** | Freer \| Sackler |
+| **NMAAHC** | National Museum of African American History and Culture |
+| **National Building Museum** | NBM |
+| **International Spy Museum** | SpyMuseum.org |
+| **Smithsonian American Art Museum** | SAAM |
+| **National Postal Museum** | NPM |
+| **US Holocaust Memorial Museum** | USHMM |
+| **National Museum of Women in the Arts** | NMWA |
+| **Planet Word Museum** | Planet Word |
+
+### 🗼 Paris
+| Source | Description |
+|--------|-------------|
+| **Louvre** | Musée du Louvre |
+| **Musée d'Orsay** | Orsay |
+| **Centre Pompidou** | Pompidou |
+| **Fondation Louis Vuitton** | FLV |
+| **Palais de Tokyo** | Palais de Tokyo |
+| **Musée Picasso** | Musée Picasso Paris |
 
 ---
 
 ## ✨ Features
 
-- **Multi-source scraper** — pulls events from NYC.gov, Eventbrite, and TimeOut NY
-- **Interactive calendar** — month-by-month view with click-to-expand event popovers
-- **Smart consolidation** — deduplication, normalization, borough detection, tag generation
+- **Multi-city, multi-source scraper** — 31 institutions across 3 cities
+- **Smart consolidation** — deduplication, normalization, tag generation
+- **Interactive calendar** — month-by-month view with click-to-expand popovers
 - **Event management** — add, edit, delete, and feature events via admin UI
-- **Advanced filtering** — by category, source, borough, date range, free-only
+- **Advanced filtering** — by category, source, neighborhood, date range, free-only
+- **Audit tool** — `scripts/audit_scrapers.py` validates each scraper's output
 - **REST API** — JSON endpoints for events, stats, and scrape triggers
 - **Beautiful design** — editorial aesthetic with Playfair Display + Space Mono typography
 
@@ -43,13 +81,23 @@ pip install -r requirements.txt
 ### 2. Run the scraper
 
 ```bash
-python scrape.py                    # Scrape all sources
-python scrape.py --source nyc       # Only NYC.gov
-python scrape.py --source eventbrite
-python scrape.py --source timeout
+python scrape.py                    # Scrape all sources (all cities)
+python scrape.py --city nyc         # Only NYC sources
+python scrape.py --city dc          # Only DC sources
+python scrape.py --city paris       # Only Paris sources
+python scrape.py --source nga       # Single institution
+python scrape.py --source planetword
+python scrape.py --source nmwa
 ```
 
-### 3. Start the web app
+### 3. Audit scrapers
+
+```bash
+python scripts/audit_scrapers.py            # Audit all
+python scripts/audit_scrapers.py --group dc # Audit DC only
+```
+
+### 4. Start the web app
 
 ```bash
 python app.py
@@ -69,12 +117,46 @@ tmc-cultural-calendar/
 ├── requirements.txt
 ├── scrapers/
 │   ├── __init__.py
-│   ├── nyc_gov_scraper.py  # NYC.gov Parks & Cultural Affairs
+│   ├── # NYC
+│   ├── nyc_gov_scraper.py
 │   ├── eventbrite_scraper.py
-│   └── timeout_scraper.py
+│   ├── timeout_scraper.py
+│   ├── amnh_scraper.py
+│   ├── moma_scraper.py
+│   ├── whitney_scraper.py
+│   ├── mcny_scraper.py
+│   ├── newmuseum_scraper.py
+│   ├── nyhistory_scraper.py
+│   ├── # DC
+│   ├── nga_scraper.py
+│   ├── hirshhorn_scraper.py
+│   ├── nmnh_scraper.py
+│   ├── nmah_scraper.py
+│   ├── nasm_scraper.py
+│   ├── nmai_scraper.py
+│   ├── nmaa_scraper.py
+│   ├── nmaahc_scraper.py
+│   ├── nbm_scraper.py
+│   ├── spymuseum_scraper.py
+│   ├── saam_scraper.py
+│   ├── npm_scraper.py
+│   ├── ushmm_scraper.py
+│   ├── nmwa_scraper.py
+│   ├── planetword_scraper.py
+│   ├── # Paris
+│   ├── louvre_scraper.py
+│   ├── orsay_scraper.py
+│   ├── pompidou_scraper.py
+│   ├── fondationlv_scraper.py
+│   ├── palaisdetokyo_scraper.py
+│   └── museepicasso_scraper.py
+├── scripts/
+│   └── audit_scrapers.py   # Scraper health audit tool
 ├── templates/
 │   ├── base.html           # Shared layout
-│   ├── index.html          # Homepage with featured events
+│   ├── index.html          # Homepage
+│   ├── dc.html             # Washington DC city page
+│   ├── paris.html          # Paris city page
 │   ├── events.html         # Filterable event list
 │   ├── calendar.html       # Interactive monthly calendar
 │   ├── event_detail.html   # Single event detail page
@@ -102,8 +184,6 @@ tmc-cultural-calendar/
 
 ## 🔄 Automating Scrapes
 
-To keep events fresh, schedule `scrape.py` with cron:
-
 ```bash
 # Scrape every morning at 7am
 0 7 * * * cd /path/to/tmc-cultural-calendar && python scrape.py >> logs/cron.log 2>&1
@@ -123,4 +203,4 @@ To keep events fresh, schedule `scrape.py` with cron:
 
 ## 📄 License
 
-MIT — built for TMC Cultural Calendar, New York City.
+MIT — built for TMC Cultural Calendar.
