@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "tmc-cultural-calendar",
-      "runtimeExecutable": "/Users/carloscalegari/Library/Python/3.9/bin/flask",
-      "runtimeArgs": ["--app", "app", "run", "--host", "0.0.0.0", "--port", "5001"],
+      "runtimeExecutable": "/usr/bin/python3",
+      "runtimeArgs": ["/Users/carloscalegari/Library/tmc_server.py"],
       "port": 5001,
       "autoPort": false
     }

@@ -36,6 +36,3 @@ Thumbs.db
 instance/
 .webassets-cache
 
-# Audit logs
-logs/audit/*.log
-logs/audit/*.json

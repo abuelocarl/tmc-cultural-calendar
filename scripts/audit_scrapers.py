@@ -58,6 +58,8 @@ from scrapers.museepicasso_scraper  import scrape_museepicasso_events
 from scrapers.saam_scraper          import scrape_saam_events
 from scrapers.npm_scraper           import scrape_npm_events
 from scrapers.ushmm_scraper         import scrape_ushmm_events
+from scrapers.nmwa_scraper          import scrape_nmwa_events
+from scrapers.planetword_scraper    import scrape_planetword_events
 
 # ── Validation patterns ───────────────────────────────────────────────────────
 DATE_RE         = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -257,6 +259,24 @@ SCRAPERS: Dict[str, Dict] = {
         "warn_below":  3,
         "group":       "dc",
         "emoji":       "🕯",
+    },
+    "nmwa": {
+        "fn":          scrape_nmwa_events,
+        "source":      "National Museum of Women in the Arts",
+        "cities":      {"Washington DC"},
+        "min_events":  1,
+        "warn_below":  3,
+        "group":       "dc",
+        "emoji":       "🎨",
+    },
+    "planetword": {
+        "fn":          scrape_planetword_events,
+        "source":      "Planet Word Museum",
+        "cities":      {"Washington DC"},
+        "min_events":  1,
+        "warn_below":  2,
+        "group":       "dc",
+        "emoji":       "📚",
     },
     # ── Paris ─────────────────────────────────────────────────────────────────
     "pompidou": {

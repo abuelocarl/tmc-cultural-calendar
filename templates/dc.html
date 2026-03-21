@@ -236,6 +236,12 @@
       ("US Holocaust Memorial Museum",
        "🕯", "Holocaust Memorial Museum",
        "https://www.ushmm.org/online-calendar"),
+      ("National Museum of Women in the Arts",
+       "🎨", "Women in the Arts",
+       "https://nmwa.org/whats-on/calendar/"),
+      ("Planet Word Museum",
+       "📚", "Planet Word Museum",
+       "https://planetwordmuseum.org/calendar/"),
     ] %}
     {% for source, icon, short_name, ext_url in museum_data %}
     {% set count = meta.events | selectattr('source', 'equalto', source) | list | length %}

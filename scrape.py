@@ -68,6 +68,11 @@ from scrapers.orsay_scraper import scrape_orsay_events
 from scrapers.palaisdetokyo_scraper import scrape_palaisdetokyo_events
 from scrapers.fondationlv_scraper import scrape_fondationlv_events
 from scrapers.museepicasso_scraper import scrape_museepicasso_events
+from scrapers.saam_scraper import scrape_saam_events
+from scrapers.npm_scraper import scrape_npm_events
+from scrapers.ushmm_scraper import scrape_ushmm_events
+from scrapers.nmwa_scraper import scrape_nmwa_events
+from scrapers.planetword_scraper import scrape_planetword_events
 from consolidator import consolidate_events, save_events, save_events_csv, load_events
 
 # Configure logging
@@ -83,7 +88,7 @@ logging.basicConfig(
 logger = logging.getLogger("tmc-scraper")
 
 MUSEUM_SOURCES = {"amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory"}
-DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmah", "nasm", "nmai", "nmaahc", "nbm", "spymuseum", "nmaa"}
+DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmah", "nasm", "nmai", "nmaahc", "nbm", "spymuseum", "nmaa", "saam", "npm", "ushmm", "nmwa", "planetword"}
 PARIS_SOURCES = {"pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso"}
 
 
@@ -113,6 +118,11 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         "nbm": 0,
         "spymuseum": 0,
         "nmaa": 0,
+        "saam": 0,
+        "npm": 0,
+        "ushmm": 0,
+        "nmwa": 0,
+        "planetword": 0,
         # Paris
         "pompidou": 0,
         "louvre": 0,
@@ -143,6 +153,11 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
     nbm_events = []
     spymuseum_events = []
     nmaa_events = []
+    saam_events = []
+    npm_events = []
+    ushmm_events = []
+    nmwa_events = []
+    planetword_events = []
     pompidou_events = []
     louvre_events = []
     orsay_events = []
@@ -383,6 +398,66 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
             logger.error(msg)
             results["errors"].append(msg)
 
+    # ── Smithsonian American Art Museum ─────────────────────────
+    if is_all or is_dc or source == "saam":
+        logger.info("🎨  Scraping Smithsonian American Art Museum events...")
+        try:
+            saam_events = scrape_saam_events()
+            results["saam"] = len(saam_events)
+            logger.info(f"  ✓ SAAM: {len(saam_events)} events found")
+        except Exception as e:
+            msg = f"SAAM scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── National Postal Museum ───────────────────────────────────
+    if is_all or is_dc or source == "npm":
+        logger.info("📬  Scraping National Postal Museum events...")
+        try:
+            npm_events = scrape_npm_events()
+            results["npm"] = len(npm_events)
+            logger.info(f"  ✓ NPM: {len(npm_events)} events found")
+        except Exception as e:
+            msg = f"NPM scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── US Holocaust Memorial Museum ─────────────────────────────
+    if is_all or is_dc or source == "ushmm":
+        logger.info("🕯  Scraping US Holocaust Memorial Museum events...")
+        try:
+            ushmm_events = scrape_ushmm_events()
+            results["ushmm"] = len(ushmm_events)
+            logger.info(f"  ✓ USHMM: {len(ushmm_events)} events found")
+        except Exception as e:
+            msg = f"USHMM scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── National Museum of Women in the Arts ─────────────────────
+    if is_all or is_dc or source == "nmwa":
+        logger.info("🎨  Scraping National Museum of Women in the Arts events...")
+        try:
+            nmwa_events = scrape_nmwa_events()
+            results["nmwa"] = len(nmwa_events)
+            logger.info(f"  ✓ NMWA: {len(nmwa_events)} events found")
+        except Exception as e:
+            msg = f"NMWA scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
+    # ── Planet Word Museum ────────────────────────────────────────
+    if is_all or is_dc or source == "planetword":
+        logger.info("📚  Scraping Planet Word Museum events...")
+        try:
+            planetword_events = scrape_planetword_events()
+            results["planetword"] = len(planetword_events)
+            logger.info(f"  ✓ Planet Word: {len(planetword_events)} events found")
+        except Exception as e:
+            msg = f"Planet Word scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
     # ── Centre Pompidou ──────────────────────────────────────────
     if is_all or is_paris or source == "pompidou":
         logger.info("🎨  Scraping Centre Pompidou events...")
@@ -477,6 +552,11 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         nbm_events=nbm_events,
         spymuseum_events=spymuseum_events,
         nmaa_events=nmaa_events,
+        saam_events=saam_events,
+        npm_events=npm_events,
+        ushmm_events=ushmm_events,
+        nmwa_events=nmwa_events,
+        planetword_events=planetword_events,
         pompidou_events=pompidou_events,
         louvre_events=louvre_events,
         orsay_events=orsay_events,
@@ -540,6 +620,11 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         f"  Natl Building Museum: {results['nbm']:>4} events\n"
         f"  Spy Museum:           {results['spymuseum']:>4} events\n"
         f"  Natl Museum Asian Art:{results['nmaa']:>4} events\n"
+        f"  SAAM:                 {results['saam']:>4} events\n"
+        f"  Natl Postal Museum:   {results['npm']:>4} events\n"
+        f"  Holocaust Mem Museum: {results['ushmm']:>4} events\n"
+        f"  Natl Museum Women Arts:{results['nmwa']:>4} events\n"
+        f"  Planet Word Museum:   {results['planetword']:>4} events\n"
         f"  ── Paris ──────────────────────────────\n"
         f"  Pompidou:             {results['pompidou']:>4} events\n"
         f"  Louvre:               {results['louvre']:>4} events\n"
@@ -583,6 +668,7 @@ Examples:
             "nyc", "eventbrite", "timeout",
             "amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory",
             "nga", "hirshhorn", "nmnh", "nmah", "nasm", "nmai", "nmaahc", "nbm", "spymuseum", "nmaa",
+            "saam", "npm", "ushmm", "nmwa", "planetword",
             "pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso",
         ],
         default="all",
