@@ -18,7 +18,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ def _parse_nmnh_date(text: str):
         month_num = MONTHS.get(month.lower(), 1)
         try:
             dt = datetime(year, month_num, int(day))
-            if dt.date() < date.today():
+            if dt.date() < date.today() or dt.date() > date.today() + timedelta(days=183):
                 return "", ""
             return dt.strftime("%Y-%m-%d"), time_str
         except ValueError:

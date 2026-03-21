@@ -25,7 +25,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -95,7 +95,7 @@ def _parse_datetime_attr(dt_attr: str):
         # Strip timezone offset before fromisoformat (Python < 3.11 compat)
         dt_clean = re.sub(r"[+-]\d{2}:\d{2}$|Z$", "", dt_attr)
         dt = datetime.fromisoformat(dt_clean)
-        if dt.date() < date.today():
+        if dt.date() < date.today() or dt.date() > date.today() + timedelta(days=183):
             return "", ""
         return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
     except Exception:
@@ -181,7 +181,7 @@ def scrape_nasm_events() -> List[Dict]:
                             try:
                                 raw = date_m.group(0).replace(",", "")
                                 dt  = datetime.strptime(raw, "%B %d %Y")
-                                if dt.date() >= date.today():
+                                if date.today() <= dt.date() <= date.today() + timedelta(days=183):
                                     date_iso = dt.strftime("%Y-%m-%d")
                             except ValueError:
                                 pass

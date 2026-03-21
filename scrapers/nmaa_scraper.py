@@ -16,7 +16,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,7 @@ def _parse_date_time(date_el):
     if date_m:
         try:
             dt = datetime.strptime(date_m.group(0), "%B %d, %Y")
-            if dt.date() >= date.today():
+            if date.today() <= dt.date() <= date.today() + timedelta(days=183):
                 date_iso = dt.strftime("%Y-%m-%d")
         except ValueError:
             pass

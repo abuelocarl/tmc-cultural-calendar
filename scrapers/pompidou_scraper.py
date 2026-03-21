@@ -26,7 +26,7 @@ import logging
 import re
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ def _parse_fr_date(text: str) -> str:
         if month_num:
             try:
                 dt = datetime(year, month_num, day)
-                if dt.date() < date.today():
+                if dt.date() < date.today() or dt.date() > date.today() + timedelta(days=183):
                     return ""
                 return dt.strftime("%Y-%m-%d")
             except ValueError:

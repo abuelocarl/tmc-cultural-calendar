@@ -29,7 +29,7 @@ import html as html_mod
 import logging
 import re
 import requests
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ def _parse_iso(dt_str: str) -> Tuple[str, str]:
         return "", ""
     try:
         dt = datetime.fromisoformat(dt_str)
-        if dt.date() < date.today():
+        if dt.date() < date.today() or dt.date() > date.today() + timedelta(days=183):
             return "", ""
         return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
     except ValueError:

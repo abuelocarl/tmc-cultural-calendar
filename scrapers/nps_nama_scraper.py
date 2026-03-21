@@ -33,7 +33,7 @@ import logging
 import os
 import re
 import requests
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Tuple
 
 logger = logging.getLogger(__name__)
@@ -143,9 +143,11 @@ def scrape_nps_nama_events() -> List[Dict]:
         resp = requests.get(
             NPS_API_BASE,
             params={
-                "parkCode": PARK_CODE,
-                "api_key":  NPS_API_KEY,
-                "limit":    500,
+                "parkCode":  PARK_CODE,
+                "api_key":   NPS_API_KEY,
+                "limit":     500,
+                "dateStart": date.today().strftime("%Y-%m-%d"),
+                "dateEnd":   (date.today() + timedelta(days=183)).strftime("%Y-%m-%d"),
             },
             timeout=20,
         )

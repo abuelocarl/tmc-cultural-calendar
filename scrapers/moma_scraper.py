@@ -5,7 +5,7 @@ Scrapes upcoming events from https://www.moma.org/calendar/
 
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import logging
 import re
 from typing import List, Dict
@@ -80,7 +80,7 @@ def _parse_moma_date(date_str: str) -> str:
     for year in [today.year, today.year + 1]:
         try:
             dt = datetime.strptime(f"{date_str} {year}", "%b %d %Y")
-            if dt.date() >= today:
+            if today <= dt.date() <= today + timedelta(days=183):
                 return dt.strftime("%Y-%m-%d")
         except ValueError:
             continue

@@ -20,7 +20,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -133,7 +133,7 @@ def scrape_nbm_events() -> List[Dict]:
                 if not date_str:
                     continue
                 try:
-                    if datetime.strptime(date_str, "%Y-%m-%d").date() < date.today():
+                    if not (date.today() <= datetime.strptime(date_str, "%Y-%m-%d").date() <= date.today() + timedelta(days=183)):
                         continue
                 except ValueError:
                     continue

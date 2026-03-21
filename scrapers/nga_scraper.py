@@ -18,7 +18,7 @@ import logging
 import re
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict
 from urllib.parse import urljoin
 
@@ -55,7 +55,7 @@ def _parse_evd(evd: str) -> tuple:
         month = int(evd[4:6])
         day = int(evd[6:8])
         dt = datetime(year, month, day)
-        if dt.date() < date.today():
+        if dt.date() < date.today() or dt.date() > date.today() + timedelta(days=183):
             return "", ""
         date_str = dt.strftime("%Y-%m-%d")
         time_str = ""

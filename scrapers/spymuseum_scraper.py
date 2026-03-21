@@ -34,7 +34,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ def _parse_spy_date(month_abbr: str, day: str) -> str:
     try:
         dt = datetime(year, month_num, int(day))
         # If the date is in the past, assume next year
-        if dt.date() < date.today():
+        if dt.date() < date.today() or dt.date() > date.today() + timedelta(days=183):
             dt = datetime(year + 1, month_num, int(day))
         return dt.strftime("%Y-%m-%d")
     except ValueError:

@@ -73,7 +73,7 @@ def _parse_date(raw: str) -> str:
     try:
         y, m, d = int(raw[:4]), int(raw[4:6]), int(raw[6:8])
         dt = date(y, m, d)
-        if dt < date.today():
+        if dt < date.today() or dt > date.today() + timedelta(days=183):
             return ""
         return dt.strftime("%Y-%m-%d")
     except (ValueError, TypeError):

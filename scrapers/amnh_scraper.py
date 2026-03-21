@@ -5,7 +5,7 @@ Scrapes upcoming ticketed events from https://www.amnh.org/calendar
 
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import logging
 import re
 from typing import List, Dict
@@ -86,7 +86,7 @@ def _parse_date_time(date_str: str):
     if date_match:
         try:
             dt = datetime.strptime(date_match.group(0), "%B %d, %Y")
-            if dt.date() >= date.today():
+            if date.today() <= dt.date() <= date.today() + timedelta(days=183):
                 date_iso = dt.strftime("%Y-%m-%d")
         except ValueError:
             pass

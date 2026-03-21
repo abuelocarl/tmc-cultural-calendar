@@ -5,7 +5,7 @@ Scrapes upcoming events from https://newmuseum.org/events/ via __NEXT_DATA__ JSO
 
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import logging
 import re
 import json
@@ -29,7 +29,7 @@ def _parse_iso_date(date_str: str):
         return "", ""
     try:
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        if dt.date() < date.today():
+        if dt.date() < date.today() or dt.date() > date.today() + timedelta(days=183):
             return "", ""
         date_iso = dt.strftime("%Y-%m-%d")
         time_str = f"{dt.hour:02d}:{dt.minute:02d}" if (dt.hour or dt.minute) else ""
@@ -38,7 +38,7 @@ def _parse_iso_date(date_str: str):
         # Try date-only
         try:
             dt = datetime.strptime(date_str[:10], "%Y-%m-%d")
-            if dt.date() < date.today():
+            if dt.date() < date.today() or dt.date() > date.today() + timedelta(days=183):
                 return "", ""
             return dt.strftime("%Y-%m-%d"), ""
         except ValueError:

@@ -31,7 +31,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Tuple
 
 logger = logging.getLogger(__name__)
@@ -111,7 +111,7 @@ def _parse_date_time(text: str) -> Tuple[str, str, str]:
         dt_date = datetime.strptime(
             f"{date_m.group(2)} {date_m.group(1)} {date_m.group(3)}", "%d %B %Y"
         ).date()
-        if dt_date < date.today():
+        if dt_date < date.today() or dt_date > date.today() + timedelta(days=183):
             return "", "", ""
         date_str = dt_date.strftime("%Y-%m-%d")
     except ValueError:

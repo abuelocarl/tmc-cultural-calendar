@@ -17,7 +17,7 @@ import logging
 import re
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -127,7 +127,7 @@ def scrape_hirshhorn_events() -> List[Dict]:
                     if re.match(r"^\d{4}-\d{2}-\d{2}$", dt_val):
                         try:
                             dt = datetime.strptime(dt_val, "%Y-%m-%d")
-                            if dt.date() >= date.today():
+                            if date.today() <= dt.date() <= date.today() + timedelta(days=183):
                                 date_iso = dt_val
                         except ValueError:
                             pass
