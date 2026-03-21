@@ -322,6 +322,7 @@ def consolidate_events(
     nmwa_events: List[Dict] = None,
     planetword_events: List[Dict] = None,
     phillips_events: List[Dict] = None,
+    nama_events: List[Dict] = None,
     # Paris sources
     pompidou_events: List[Dict] = None,
     louvre_events: List[Dict] = None,
@@ -360,6 +361,7 @@ def consolidate_events(
         ("National Museum of Women in the Arts", nmwa_events),
         ("Planet Word Museum", planetword_events),
         ("The Phillips Collection", phillips_events),
+        ("National Mall & Memorial Parks", nama_events),
         # Paris
         ("Pompidou", pompidou_events),
         ("Louvre", louvre_events),

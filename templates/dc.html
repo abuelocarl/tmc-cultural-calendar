@@ -245,6 +245,9 @@
       ("The Phillips Collection",
        "🖼", "The Phillips Collection",
        "https://www.phillipscollection.org/exhibitions-events"),
+      ("National Mall & Memorial Parks",
+       "🏛", "National Mall & Memorial Parks",
+       "https://www.nps.gov/nama/planyourvisit/calendar.htm"),
     ] %}
     {% for source, icon, short_name, ext_url in museum_data %}
     {% set count = meta.events | selectattr('source', 'equalto', source) | list | length %}
