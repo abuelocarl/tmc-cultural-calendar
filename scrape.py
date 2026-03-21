@@ -73,6 +73,7 @@ from scrapers.npm_scraper import scrape_npm_events
 from scrapers.ushmm_scraper import scrape_ushmm_events
 from scrapers.nmwa_scraper import scrape_nmwa_events
 from scrapers.planetword_scraper import scrape_planetword_events
+from scrapers.phillips_scraper import scrape_phillips_events
 from consolidator import consolidate_events, save_events, save_events_csv, load_events
 
 # Configure logging
@@ -88,7 +89,7 @@ logging.basicConfig(
 logger = logging.getLogger("tmc-scraper")
 
 MUSEUM_SOURCES = {"amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory"}
-DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmah", "nasm", "nmai", "nmaahc", "nbm", "spymuseum", "nmaa", "saam", "npm", "ushmm", "nmwa", "planetword"}
+DC_SOURCES = {"nga", "hirshhorn", "nmnh", "nmah", "nasm", "nmai", "nmaahc", "nbm", "spymuseum", "nmaa", "saam", "npm", "ushmm", "nmwa", "planetword", "phillips"}
 PARIS_SOURCES = {"pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso"}
 
 
@@ -123,6 +124,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         "ushmm": 0,
         "nmwa": 0,
         "planetword": 0,
+        "phillips": 0,
         # Paris
         "pompidou": 0,
         "louvre": 0,
@@ -158,6 +160,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
     ushmm_events = []
     nmwa_events = []
     planetword_events = []
+    phillips_events = []
     pompidou_events = []
     louvre_events = []
     orsay_events = []
@@ -458,6 +461,18 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
             logger.error(msg)
             results["errors"].append(msg)
 
+    # ── The Phillips Collection ──────────────────────────────────
+    if is_all or is_dc or source == "phillips":
+        logger.info("🖼  Scraping The Phillips Collection events...")
+        try:
+            phillips_events = scrape_phillips_events()
+            results["phillips"] = len(phillips_events)
+            logger.info(f"  ✓ Phillips Collection: {len(phillips_events)} events found")
+        except Exception as e:
+            msg = f"Phillips scraper failed: {e}"
+            logger.error(msg)
+            results["errors"].append(msg)
+
     # ── Centre Pompidou ──────────────────────────────────────────
     if is_all or is_paris or source == "pompidou":
         logger.info("🎨  Scraping Centre Pompidou events...")
@@ -557,6 +572,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         ushmm_events=ushmm_events,
         nmwa_events=nmwa_events,
         planetword_events=planetword_events,
+        phillips_events=phillips_events,
         pompidou_events=pompidou_events,
         louvre_events=louvre_events,
         orsay_events=orsay_events,
@@ -625,6 +641,7 @@ def run_scraper(source: str = "all", save: bool = True) -> dict:
         f"  Holocaust Mem Museum: {results['ushmm']:>4} events\n"
         f"  Natl Museum Women Arts:{results['nmwa']:>4} events\n"
         f"  Planet Word Museum:   {results['planetword']:>4} events\n"
+        f"  Phillips Collection:  {results['phillips']:>4} events\n"
         f"  ── Paris ──────────────────────────────\n"
         f"  Pompidou:             {results['pompidou']:>4} events\n"
         f"  Louvre:               {results['louvre']:>4} events\n"
@@ -668,7 +685,7 @@ Examples:
             "nyc", "eventbrite", "timeout",
             "amnh", "moma", "whitney", "mcny", "newmuseum", "nyhistory",
             "nga", "hirshhorn", "nmnh", "nmah", "nasm", "nmai", "nmaahc", "nbm", "spymuseum", "nmaa",
-            "saam", "npm", "ushmm", "nmwa", "planetword",
+            "saam", "npm", "ushmm", "nmwa", "planetword", "phillips",
             "pompidou", "louvre", "orsay", "palaisdetokyo", "fondationlv", "museepicasso",
         ],
         default="all",

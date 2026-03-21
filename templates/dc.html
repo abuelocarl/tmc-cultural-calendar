@@ -242,6 +242,9 @@
       ("Planet Word Museum",
        "📚", "Planet Word Museum",
        "https://planetwordmuseum.org/calendar/"),
+      ("The Phillips Collection",
+       "🖼", "The Phillips Collection",
+       "https://www.phillipscollection.org/exhibitions-events"),
     ] %}
     {% for source, icon, short_name, ext_url in museum_data %}
     {% set count = meta.events | selectattr('source', 'equalto', source) | list | length %}

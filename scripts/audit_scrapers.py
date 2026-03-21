@@ -60,6 +60,7 @@ from scrapers.npm_scraper           import scrape_npm_events
 from scrapers.ushmm_scraper         import scrape_ushmm_events
 from scrapers.nmwa_scraper          import scrape_nmwa_events
 from scrapers.planetword_scraper    import scrape_planetword_events
+from scrapers.phillips_scraper      import scrape_phillips_events
 
 # ── Validation patterns ───────────────────────────────────────────────────────
 DATE_RE         = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -277,6 +278,15 @@ SCRAPERS: Dict[str, Dict] = {
         "warn_below":  2,
         "group":       "dc",
         "emoji":       "📚",
+    },
+    "phillips": {
+        "fn":          scrape_phillips_events,
+        "source":      "The Phillips Collection",
+        "cities":      {"Washington DC"},
+        "min_events":  1,
+        "warn_below":  2,
+        "group":       "dc",
+        "emoji":       "🖼",
     },
     # ── Paris ─────────────────────────────────────────────────────────────────
     "pompidou": {
