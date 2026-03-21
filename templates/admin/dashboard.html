@@ -1,0 +1,343 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+  .scraper-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .scraper-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.15s;
+  }
+
+  .scraper-card:hover {
+    border-color: #444c56;
+  }
+
+  .scraper-card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .scraper-emoji {
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .scraper-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    flex: 1;
+  }
+
+  .scraper-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .event-count {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--blue);
+    line-height: 1;
+  }
+
+  .event-count.zero {
+    color: var(--muted);
+  }
+
+  .event-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .scraper-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .city-section {
+    margin-bottom: 28px;
+  }
+
+  .city-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .city-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .city-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .run-table-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats row -->
+<div class="stats-row mb-24">
+  <div class="stat-card">
+    <div class="stat-label">Total Events</div>
+    <div class="stat-value" id="stat-total-events">{{ total_events }}</div>
+    <div class="stat-sub">across all scrapers</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active Scrapers</div>
+    <div class="stat-value" id="stat-active-scrapers">{{ active_scrapers }}</div>
+    <div class="stat-sub">with event data</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Last Run</div>
+    <div class="stat-value" style="font-size:22px;" id="stat-last-run">{{ last_run_ago }}</div>
+    <div class="stat-sub">{% if runs %}{{ runs[0].source }}{% else %}—{% endif %}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Last Run Status</div>
+    <div class="stat-value" style="font-size:22px;">
+      {% if last_run_status == 'success' %}
+        <span style="color:var(--green)">✓ Success</span>
+      {% elif last_run_status == 'error' %}
+        <span style="color:var(--red)">✗ Error</span>
+      {% else %}
+        <span style="color:var(--muted)">—</span>
+      {% endif %}
+    </div>
+    <div class="stat-sub" id="stat-status-sub">
+      {% if runs %}exit {{ runs[0].returncode }}{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- NYC Section -->
+<div class="city-section">
+  <div class="city-header">
+    <div class="city-title">
+      🏙 New York City
+      <span class="city-subtitle">{{ scrapers.nyc | length }} scrapers</span>
+    </div>
+    <button class="btn btn-success btn-sm" onclick="runGroup('nyc')">▶ Run NYC Group</button>
+  </div>
+  <div class="scraper-grid">
+    {% for s in scrapers.nyc %}
+    {% set count = counts.get(s.key, 0) %}
+    <div class="scraper-card">
+      <div class="scraper-card-top">
+        <span class="scraper-emoji">{{ s.emoji }}</span>
+        <span class="scraper-name">{{ s.name }}</span>
+      </div>
+      <div class="scraper-card-bottom">
+        <div>
+          <div class="event-count {% if count == 0 %}zero{% endif %}">{{ count }}</div>
+          <div class="event-label">events</div>
+        </div>
+        <div class="scraper-actions">
+          <button class="btn btn-ghost btn-xs" onclick="runSingle('{{ s.key }}')" title="Run {{ s.name }}">▶</button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- DC Section -->
+<div class="city-section">
+  <div class="city-header">
+    <div class="city-title">
+      🏛 Washington D.C.
+      <span class="city-subtitle">{{ scrapers.dc | length }} scrapers</span>
+    </div>
+    <button class="btn btn-success btn-sm" onclick="runGroup('dc')">▶ Run DC Group</button>
+  </div>
+  <div class="scraper-grid">
+    {% for s in scrapers.dc %}
+    {% set count = counts.get(s.key, 0) %}
+    <div class="scraper-card">
+      <div class="scraper-card-top">
+        <span class="scraper-emoji">{{ s.emoji }}</span>
+        <span class="scraper-name">{{ s.name }}</span>
+      </div>
+      <div class="scraper-card-bottom">
+        <div>
+          <div class="event-count {% if count == 0 %}zero{% endif %}">{{ count }}</div>
+          <div class="event-label">events</div>
+        </div>
+        <div class="scraper-actions">
+          <button class="btn btn-ghost btn-xs" onclick="runSingle('{{ s.key }}')" title="Run {{ s.name }}">▶</button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Paris Section -->
+<div class="city-section">
+  <div class="city-header">
+    <div class="city-title">
+      🗼 Paris
+      <span class="city-subtitle">{{ scrapers.paris | length }} scrapers</span>
+    </div>
+    <button class="btn btn-success btn-sm" onclick="runGroup('paris')">▶ Run Paris Group</button>
+  </div>
+  <div class="scraper-grid">
+    {% for s in scrapers.paris %}
+    {% set count = counts.get(s.key, 0) %}
+    <div class="scraper-card">
+      <div class="scraper-card-top">
+        <span class="scraper-emoji">{{ s.emoji }}</span>
+        <span class="scraper-name">{{ s.name }}</span>
+      </div>
+      <div class="scraper-card-bottom">
+        <div>
+          <div class="event-count {% if count == 0 %}zero{% endif %}">{{ count }}</div>
+          <div class="event-label">events</div>
+        </div>
+        <div class="scraper-actions">
+          <button class="btn btn-ghost btn-xs" onclick="runSingle('{{ s.key }}')" title="Run {{ s.name }}">▶</button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Recent Runs -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Recent Runs</span>
+    <a href="{{ url_for('run_page') }}" class="btn btn-ghost btn-sm">View all runs</a>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="table" id="runs-table">
+      <thead>
+        <tr>
+          <th>Run ID</th>
+          <th>Source</th>
+          <th>Status</th>
+          <th>Started</th>
+          <th>Duration</th>
+          <th>Log Lines</th>
+        </tr>
+      </thead>
+      <tbody id="runs-tbody">
+        {% for run in runs %}
+        <tr>
+          <td class="font-mono" style="color:var(--muted)">{{ run.run_id }}</td>
+          <td>{{ run.source }}</td>
+          <td>
+            <div class="run-table-status">
+              {% if run.status == 'success' %}
+                <span class="dot dot-green"></span>
+                <span class="badge badge-green">success</span>
+              {% elif run.status == 'error' %}
+                <span class="dot dot-red"></span>
+                <span class="badge badge-red">error</span>
+              {% else %}
+                <span class="dot dot-muted"></span>
+                <span class="badge badge-muted">{{ run.status }}</span>
+              {% endif %}
+            </div>
+          </td>
+          <td class="text-muted">{{ time_ago(run.started_at) }}</td>
+          <td class="font-mono">{{ run.duration_secs }}s</td>
+          <td class="font-mono text-muted">{{ run.log_lines }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No runs yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function runGroup(group) {
+    fetch('/api/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({source: group, dry_run: false})
+    }).then(r => r.json()).then(d => {
+      if (d.error) { alert('Error: ' + d.error); return; }
+      window.location.href = '/run';
+    });
+  }
+
+  function runSingle(key) {
+    fetch('/api/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({source: key, dry_run: false})
+    }).then(r => r.json()).then(d => {
+      if (d.error) { alert('Error: ' + d.error); return; }
+      window.location.href = '/run';
+    });
+  }
+
+  // Refresh stats every 10s
+  function refreshStats() {
+    fetch('/api/dashboard').then(r => r.json()).then(d => {
+      const te = document.getElementById('stat-total-events');
+      const as = document.getElementById('stat-active-scrapers');
+      if (te) te.textContent = d.total_events;
+      if (as) as.textContent = d.active_scrapers;
+      if (d.last_run) {
+        const lr = document.getElementById('stat-last-run');
+        if (lr) lr.textContent = timeAgo(d.last_run.started_at);
+      }
+    }).catch(() => {});
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return 'never';
+    const delta = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (delta < 60) return delta + 's ago';
+    if (delta < 3600) return Math.floor(delta/60) + 'm ago';
+    if (delta < 86400) return Math.floor(delta/3600) + 'h ago';
+    return Math.floor(delta/86400) + 'd ago';
+  }
+
+  setInterval(refreshStats, 10000);
+</script>
+{% endblock %}

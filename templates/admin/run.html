@@ -1,0 +1,532 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Run Scrapers{% endblock %}
+{% block page_title %}Run Scrapers{% endblock %}
+
+{% block extra_head %}
+<style>
+  .run-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .controls-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .group-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .group-tab {
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+
+  .group-tab:hover { color: var(--text); border-color: #444c56; }
+
+  .group-tab.active {
+    background: rgba(88,166,255,0.15);
+    border-color: rgba(88,166,255,0.5);
+    color: var(--blue);
+  }
+
+  .scraper-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    background: var(--surface2);
+  }
+
+  .scraper-check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .scraper-check-item:hover { background: rgba(255,255,255,0.04); }
+
+  .scraper-check-item input[type=checkbox] {
+    accent-color: var(--blue);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+  }
+
+  .scraper-check-label {
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .check-city-badge {
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin-left: auto;
+  }
+
+  .options-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  .check-opt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .check-opt input[type=checkbox] {
+    accent-color: var(--blue);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Console panel */
+  .console-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .console-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .console-panel {
+    height: 520px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+  }
+
+  .status-bar-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .status-bar-dot.running {
+    background: var(--green);
+    animation: pulse 1.2s infinite;
+  }
+
+  .status-bar-dot.success { background: var(--green); }
+  .status-bar-dot.error { background: var(--red); }
+
+  .status-bar-text { flex: 1; color: var(--text); }
+  .status-bar-elapsed { color: var(--muted); font-family: monospace; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="run-layout">
+
+  <!-- Controls -->
+  <div class="controls-panel">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Target</span>
+      </div>
+      <div class="card-body" style="padding-bottom:14px;">
+        <div class="mb-12">
+          <div class="form-label" style="margin-bottom:8px;">Group</div>
+          <div class="group-tabs">
+            <button class="group-tab active" data-group="all" onclick="selectGroup(this,'all')">All</button>
+            <button class="group-tab" data-group="nyc" onclick="selectGroup(this,'nyc')">NYC</button>
+            <button class="group-tab" data-group="dc" onclick="selectGroup(this,'dc')">DC</button>
+            <button class="group-tab" data-group="paris" onclick="selectGroup(this,'paris')">Paris</button>
+            <button class="group-tab" data-group="custom" onclick="selectGroup(this,'custom')">Custom</button>
+          </div>
+        </div>
+
+        <div id="custom-panel" class="hidden">
+          <div class="form-label" style="margin-bottom:6px;">Select scrapers</div>
+          <div class="scraper-list" id="scraper-checklist">
+            {% for city, city_scrapers in scrapers.items() %}
+              {% for s in city_scrapers %}
+              <label class="scraper-check-item">
+                <input type="checkbox" class="scraper-checkbox" value="{{ s.key }}" data-city="{{ city }}">
+                <span class="scraper-check-label">
+                  <span>{{ s.emoji }}</span>
+                  <span>{{ s.name }}</span>
+                  <span class="check-city-badge">{{ city }}</span>
+                </span>
+              </label>
+              {% endfor %}
+            {% endfor %}
+          </div>
+          <div style="margin-top:6px;display:flex;gap:6px;">
+            <button class="btn btn-ghost btn-xs" onclick="selectAllCustom(true)">Select all</button>
+            <button class="btn btn-ghost btn-xs" onclick="selectAllCustom(false)">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Options</span>
+      </div>
+      <div class="card-body">
+        <label class="check-opt">
+          <input type="checkbox" id="dry-run-check">
+          <span>Dry run (no writes)</span>
+        </label>
+        <div class="form-hint mt-8">Runs scraper logic but skips saving events to events.json</div>
+      </div>
+    </div>
+
+    <div class="action-buttons">
+      <button class="btn btn-success flex-1" id="start-btn" onclick="startRun()">▶ Start Run</button>
+      <button class="btn btn-danger hidden" id="stop-btn" onclick="stopRun()">■ Stop</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Recent Runs</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="table" id="mini-runs-table">
+          <thead>
+            <tr><th>Source</th><th>Status</th><th>When</th></tr>
+          </thead>
+          <tbody id="mini-runs-tbody">
+            <tr><td colspan="3" style="color:var(--muted);text-align:center;padding:12px;">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Console -->
+  <div class="console-wrapper">
+    <div class="console-header">
+      <span class="card-title">Live Output</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:11px;color:var(--muted);" id="line-count">0 lines</span>
+        <button class="btn btn-ghost btn-sm" onclick="clearConsole()">Clear</button>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span class="status-bar-dot" id="status-dot"></span>
+      <span class="status-bar-text" id="status-text">Ready</span>
+      <span class="status-bar-elapsed" id="status-elapsed"></span>
+    </div>
+
+    <div class="console-panel" id="console-output"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let currentGroup = 'all';
+  let sseSource = null;
+  let startTime = null;
+  let elapsedTimer = null;
+  let isRunning = false;
+  let userScrolledUp = false;
+  let lineCount = 0;
+
+  const consoleEl = document.getElementById('console-output');
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+  const statusElapsed = document.getElementById('status-elapsed');
+  const startBtn = document.getElementById('start-btn');
+  const stopBtn = document.getElementById('stop-btn');
+  const lineCountEl = document.getElementById('line-count');
+
+  // Track user scroll
+  consoleEl.addEventListener('scroll', () => {
+    const atBottom = consoleEl.scrollHeight - consoleEl.scrollTop - consoleEl.clientHeight < 40;
+    userScrolledUp = !atBottom;
+  });
+
+  function scrollConsole() {
+    if (!userScrolledUp) {
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+  }
+
+  function appendLine(ts, text) {
+    const div = document.createElement('div');
+    div.className = 'console-line';
+
+    const tsSpan = document.createElement('span');
+    tsSpan.className = 'console-ts';
+    tsSpan.textContent = ts;
+
+    const textSpan = document.createElement('span');
+    let lvlClass = 'lvl-info';
+    const upper = text.toUpperCase();
+    if (upper.includes('ERROR') || upper.includes('FAILED') || upper.includes('TRACEBACK')) lvlClass = 'lvl-error';
+    else if (upper.includes('WARNING') || upper.includes('WARN')) lvlClass = 'lvl-warning';
+    else if (upper.includes('SUCCESS') || upper.includes('DONE') || upper.includes('COMPLETE') || upper.includes('SAVED')) lvlClass = 'lvl-success';
+    else if (upper.includes('DEBUG')) lvlClass = 'lvl-debug';
+    textSpan.className = 'console-text ' + lvlClass;
+    textSpan.textContent = text;
+
+    div.appendChild(tsSpan);
+    div.appendChild(textSpan);
+    consoleEl.appendChild(div);
+
+    lineCount++;
+    lineCountEl.textContent = lineCount + ' line' + (lineCount !== 1 ? 's' : '');
+    scrollConsole();
+  }
+
+  function clearConsole() {
+    consoleEl.innerHTML = '';
+    lineCount = 0;
+    lineCountEl.textContent = '0 lines';
+  }
+
+  function selectGroup(btn, group) {
+    document.querySelectorAll('.group-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentGroup = group;
+    const customPanel = document.getElementById('custom-panel');
+    if (group === 'custom') {
+      customPanel.classList.remove('hidden');
+    } else {
+      customPanel.classList.add('hidden');
+    }
+  }
+
+  function selectAllCustom(val) {
+    document.querySelectorAll('.scraper-checkbox').forEach(cb => cb.checked = val);
+  }
+
+  function getTargetSource() {
+    if (currentGroup === 'custom') {
+      const checked = Array.from(document.querySelectorAll('.scraper-checkbox:checked')).map(c => c.value);
+      if (checked.length === 0) { alert('Select at least one scraper.'); return null; }
+      if (checked.length === 1) return checked[0];
+      // Multiple custom: join as comma-separated (handled in scrape.py via multiple --source or we pick first)
+      // For simplicity, run 'all' if all checked, else run the group if only one city
+      return checked.join(',');
+    }
+    return currentGroup;
+  }
+
+  function setRunning(running) {
+    isRunning = running;
+    if (running) {
+      startBtn.disabled = true;
+      startBtn.classList.add('disabled');
+      stopBtn.classList.remove('hidden');
+      statusDot.className = 'status-bar-dot running';
+      statusText.textContent = 'Running…';
+      startTime = Date.now();
+      elapsedTimer = setInterval(updateElapsed, 1000);
+      updateElapsed();
+    } else {
+      startBtn.disabled = false;
+      startBtn.classList.remove('disabled');
+      stopBtn.classList.add('hidden');
+      clearInterval(elapsedTimer);
+    }
+  }
+
+  function updateElapsed() {
+    if (!startTime) return;
+    const s = Math.floor((Date.now() - startTime) / 1000);
+    const m = Math.floor(s / 60);
+    const rem = s % 60;
+    statusElapsed.textContent = (m > 0 ? m + 'm ' : '') + rem + 's';
+  }
+
+  function startRun() {
+    if (isRunning) return;
+    const source = getTargetSource();
+    if (!source) return;
+
+    const dryRun = document.getElementById('dry-run-check').checked;
+    clearConsole();
+    userScrolledUp = false;
+    setRunning(true);
+
+    fetch('/api/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({source: source, dry_run: dryRun})
+    })
+    .then(r => {
+      if (r.status === 409) {
+        setRunning(false);
+        statusDot.className = 'status-bar-dot error';
+        statusText.textContent = 'Another run is already in progress';
+        return null;
+      }
+      return r.json();
+    })
+    .then(d => {
+      if (!d) return;
+      appendLine(nowTs(), '[admin] Run started: ' + d.run_id + '  source=' + d.source);
+      openSSE(0);
+    })
+    .catch(err => {
+      setRunning(false);
+      statusDot.className = 'status-bar-dot error';
+      statusText.textContent = 'Error: ' + err.message;
+    });
+  }
+
+  function openSSE(offset) {
+    if (sseSource) { sseSource.close(); sseSource = null; }
+    sseSource = new EventSource('/api/stream?target=run&offset=' + offset);
+    let currentOffset = offset;
+
+    sseSource.onmessage = function(e) {
+      const data = JSON.parse(e.data);
+      if (data.__end__) {
+        sseSource.close();
+        sseSource = null;
+        const rc = data.returncode;
+        setRunning(false);
+        if (rc === 0) {
+          statusDot.className = 'status-bar-dot success';
+          statusText.textContent = '✓ Completed successfully';
+          appendLine(nowTs(), '[admin] ✓ Run completed (exit 0)');
+        } else {
+          statusDot.className = 'status-bar-dot error';
+          statusText.textContent = '✗ Failed (exit ' + rc + ')';
+          appendLine(nowTs(), '[admin] ✗ Run failed (exit ' + rc + ')');
+        }
+        loadMiniRuns();
+        return;
+      }
+      if (data.ts && data.line !== undefined) {
+        appendLine(data.ts, data.line);
+        currentOffset++;
+      }
+    };
+
+    sseSource.onerror = function() {
+      // Reconnect if still running
+      if (isRunning) {
+        setTimeout(() => openSSE(currentOffset), 1000);
+      }
+      if (sseSource) { sseSource.close(); sseSource = null; }
+    };
+  }
+
+  function stopRun() {
+    fetch('/api/stop', {method: 'POST'}).then(r => r.json()).then(d => {
+      appendLine(nowTs(), '[admin] Stop requested: ' + d.status);
+    });
+  }
+
+  function nowTs() {
+    const n = new Date();
+    return n.toTimeString().slice(0,8);
+  }
+
+  function loadMiniRuns() {
+    fetch('/api/runs').then(r => r.json()).then(runs => {
+      const tbody = document.getElementById('mini-runs-tbody');
+      if (!runs.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:12px;">No runs yet</td></tr>';
+        return;
+      }
+      tbody.innerHTML = runs.slice(0,10).map(r => {
+        const statusClass = r.status === 'success' ? 'badge-green' : r.status === 'error' ? 'badge-red' : 'badge-muted';
+        const ago = timeAgo(r.started_at);
+        return `<tr>
+          <td style="font-size:11px;">${r.source}</td>
+          <td><span class="badge ${statusClass}">${r.status}</span></td>
+          <td style="color:var(--muted);font-size:11px;">${ago}</td>
+        </tr>`;
+      }).join('');
+    }).catch(() => {});
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return 'never';
+    const delta = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (delta < 60) return delta + 's ago';
+    if (delta < 3600) return Math.floor(delta/60) + 'm ago';
+    if (delta < 86400) return Math.floor(delta/3600) + 'h ago';
+    return Math.floor(delta/86400) + 'd ago';
+  }
+
+  // On page load: check if run is already active
+  fetch('/api/status').then(r => r.json()).then(d => {
+    if (d.running) {
+      setRunning(true);
+      statusText.textContent = 'Running: ' + (d.source || '…');
+      openSSE(d.log_length);
+    }
+    loadMiniRuns();
+  });
+</script>
+{% endblock %}

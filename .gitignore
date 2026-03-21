@@ -36,3 +36,10 @@ Thumbs.db
 instance/
 .webassets-cache
 
+
+# NPS API key
+.env
+
+# Admin console state
+data/admin_config.json
+data/admin_runs.json

@@ -1,0 +1,306 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Config{% endblock %}
+{% block page_title %}Configuration{% endblock %}
+
+{% block extra_head %}
+<style>
+  .config-layout {
+    max-width: 680px;
+  }
+
+  .config-section {
+    margin-bottom: 28px;
+  }
+
+  .config-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .danger-zone {
+    border: 1px solid rgba(248,81,73,0.3);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .danger-zone-header {
+    background: rgba(248,81,73,0.08);
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(248,81,73,0.2);
+  }
+
+  .danger-zone-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--red);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .danger-zone-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .danger-action {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+  }
+
+  .danger-action:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .danger-action-info {
+    flex: 1;
+  }
+
+  .danger-action-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .danger-action-desc {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .password-field-wrap {
+    position: relative;
+    display: flex;
+  }
+
+  .password-field-wrap input {
+    padding-right: 80px;
+  }
+
+  .show-hide-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+
+  .show-hide-btn:hover { color: var(--text); }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: transform 0.25s, opacity 0.25s;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .toast.success { border-color: rgba(63,185,80,0.4); }
+  .toast.error   { border-color: rgba(248,81,73,0.4); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="config-layout">
+
+  <form method="POST" action="{{ url_for('config_page') }}">
+
+    <!-- API Keys -->
+    <div class="config-section">
+      <div class="config-section-title">🔑 API Keys</div>
+
+      <div class="card">
+        <div class="card-body" style="display:flex;flex-direction:column;gap:18px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="nps_api_key">NPS API Key</label>
+            <div class="password-field-wrap">
+              <input
+                type="password"
+                class="form-control"
+                id="nps_api_key"
+                name="nps_api_key"
+                value="{{ config.nps_api_key or '' }}"
+                placeholder="Enter your NPS API key…"
+                autocomplete="off"
+              >
+              <button type="button" class="show-hide-btn" onclick="togglePassword('nps_api_key', this)">Show</button>
+            </div>
+            <div class="form-hint">
+              Required for National Park Service scrapers (NAMA). Get one at
+              <a href="https://www.nps.gov/subjects/developer/api-documentation.htm" target="_blank">nps.gov/developer</a>.
+              Passed as <span class="font-mono">NPS_API_KEY</span> env var to subprocesses.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scraper Settings -->
+    <div class="config-section">
+      <div class="config-section-title">⚙ Scraper Settings</div>
+
+      <div class="card">
+        <div class="card-body" style="display:flex;flex-direction:column;gap:18px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="date_cap_days">Date Cap (days)</label>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <input
+                type="number"
+                class="form-control"
+                id="date_cap_days"
+                name="date_cap_days"
+                value="{{ config.date_cap_days or 183 }}"
+                min="7"
+                max="730"
+                style="max-width:140px;"
+              >
+              <span style="font-size:12px;color:var(--muted);" id="days-label">
+                (~{{ ((config.date_cap_days or 183) / 30.4) | round(1) }} months)
+              </span>
+            </div>
+            <div class="form-hint">
+              Scrapers will skip events beyond this many days from today.
+              Default: 183 (~6 months). Passed as <span class="font-mono">DATE_CAP_DAYS</span> env var.
+              <strong>Note:</strong> changing this requires re-running scrapers to take effect.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:28px;">
+      <button type="submit" class="btn btn-primary">💾 Save Configuration</button>
+    </div>
+  </form>
+
+  <!-- Danger Zone -->
+  <div class="config-section">
+    <div class="danger-zone">
+      <div class="danger-zone-header">
+        <div class="danger-zone-title">⚠ Danger Zone</div>
+      </div>
+      <div class="danger-zone-body">
+
+        <div class="danger-action">
+          <div class="danger-action-info">
+            <div class="danger-action-name">Clear Run History</div>
+            <div class="danger-action-desc">
+              Deletes all entries from <span class="font-mono">data/admin_runs.json</span>.
+              This cannot be undone.
+            </div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="clearHistory()">Clear History</button>
+        </div>
+
+        <div class="danger-action">
+          <div class="danger-action-info">
+            <div class="danger-action-name">Clear Log File</div>
+            <div class="danger-action-desc">
+              Truncates <span class="font-mono">scraper.log</span> to zero bytes.
+              This cannot be undone.
+            </div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="clearLog()">Clear Log</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Days label update
+  const daysInput = document.getElementById('date_cap_days');
+  const daysLabel = document.getElementById('days-label');
+  if (daysInput && daysLabel) {
+    daysInput.addEventListener('input', () => {
+      const v = parseInt(daysInput.value) || 0;
+      const months = (v / 30.4).toFixed(1);
+      daysLabel.textContent = '(~' + months + ' months)';
+    });
+  }
+
+  // Password toggle
+  function togglePassword(fieldId, btn) {
+    const field = document.getElementById(fieldId);
+    if (field.type === 'password') {
+      field.type = 'text';
+      btn.textContent = 'Hide';
+    } else {
+      field.type = 'password';
+      btn.textContent = 'Show';
+    }
+  }
+
+  // Toast
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + (type || '');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // Danger zone actions
+  function clearHistory() {
+    if (!confirm('Clear all run history? This cannot be undone.')) return;
+    fetch('/api/config/clear-history', {method: 'POST'})
+      .then(r => r.json())
+      .then(() => showToast('Run history cleared.', 'success'))
+      .catch(() => showToast('Error clearing history.', 'error'));
+  }
+
+  function clearLog() {
+    if (!confirm('Clear scraper.log? This cannot be undone.')) return;
+    fetch('/api/config/clear-log', {method: 'POST'})
+      .then(r => r.json())
+      .then(() => showToast('Log file cleared.', 'success'))
+      .catch(() => showToast('Error clearing log.', 'error'));
+  }
+</script>
+{% endblock %}

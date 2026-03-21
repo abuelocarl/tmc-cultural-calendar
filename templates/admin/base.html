@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TMC Admin{% endblock %} — TMC Cultural Calendar</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --surface2: #21262d;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #7d8590;
+      --green:    #3fb950;
+      --yellow:   #d29922;
+      --red:      #f85149;
+      --blue:     #58a6ff;
+      --purple:   #bc8cff;
+      --orange:   #f0883e;
+      --sidebar-w: 220px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────── */
+
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      overflow-y: auto;
+    }
+
+    .sidebar-logo {
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-logo .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      width: 100%;
+    }
+
+    .sidebar-logo .logo-icon {
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .sidebar-logo .logo-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-logo .logo-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+
+    .sidebar-logo .logo-sub {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-nav {
+      padding: 12px 8px;
+      flex: 1;
+    }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      padding: 8px 10px 4px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+      cursor: pointer;
+      text-decoration: none;
+      margin-bottom: 2px;
+    }
+
+    .nav-link:hover {
+      background: var(--surface2);
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-link.active {
+      background: rgba(88, 166, 255, 0.1);
+      color: var(--blue);
+    }
+
+    .nav-link .nav-icon {
+      font-size: 15px;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .status-dot.running {
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ── Main Content ─────────────────────────────────────────────────────── */
+
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .topbar-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .topbar-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .page-content {
+      padding: 24px;
+      flex: 1;
+    }
+
+    /* ── Flash messages ──────────────────────────────────────────────────── */
+
+    .flash-container {
+      padding: 0 24px 0;
+    }
+
+    .flash {
+      padding: 10px 16px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      border: 1px solid transparent;
+    }
+
+    .flash.success {
+      background: rgba(63, 185, 80, 0.1);
+      border-color: rgba(63, 185, 80, 0.3);
+      color: var(--green);
+    }
+
+    .flash.error {
+      background: rgba(248, 81, 73, 0.1);
+      border-color: rgba(248, 81, 73, 0.3);
+      color: var(--red);
+    }
+
+    /* ── Cards ───────────────────────────────────────────────────────────── */
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .card-body {
+      padding: 18px;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+      font-family: inherit;
+      line-height: 1.4;
+      text-decoration: none;
+    }
+
+    .btn:disabled, .btn.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #1f6feb;
+      border-color: rgba(240,246,252,0.1);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { background: #388bfd; }
+
+    .btn-success {
+      background: rgba(63,185,80,0.15);
+      border-color: rgba(63,185,80,0.4);
+      color: var(--green);
+    }
+    .btn-success:hover:not(:disabled) { background: rgba(63,185,80,0.25); }
+
+    .btn-danger {
+      background: rgba(248,81,73,0.15);
+      border-color: rgba(248,81,73,0.4);
+      color: var(--red);
+    }
+    .btn-danger:hover:not(:disabled) { background: rgba(248,81,73,0.25); }
+
+    .btn-secondary {
+      background: var(--surface2);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover:not(:disabled) { background: #30363d; border-color: #8b949e; }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--muted);
+    }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    .btn-xs {
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+
+    /* ── Badges ──────────────────────────────────────────────────────────── */
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-green  { background: rgba(63,185,80,0.15);  color: var(--green);  }
+    .badge-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+    .badge-red    { background: rgba(248,81,73,0.15);  color: var(--red);    }
+    .badge-blue   { background: rgba(88,166,255,0.15); color: var(--blue);   }
+    .badge-muted  { background: var(--surface2);       color: var(--muted);  }
+
+    /* ── Tables ──────────────────────────────────────────────────────────── */
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th {
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table td {
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(48,54,61,0.5);
+      color: var(--text);
+    }
+
+    .table tr:last-child td { border-bottom: none; }
+
+    .table tbody tr:hover td { background: rgba(33,38,45,0.5); }
+
+    /* ── Console / Log panel ─────────────────────────────────────────────── */
+
+    .console-panel {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: "SFMono-Regular", "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+      overflow-y: auto;
+      padding: 12px;
+      position: relative;
+    }
+
+    .console-line {
+      display: flex;
+      gap: 8px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .console-ts {
+      color: #444c56;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .console-text { color: #c9d1d9; }
+    .console-text.lvl-error   { color: var(--red); }
+    .console-text.lvl-warning { color: var(--yellow); }
+    .console-text.lvl-success { color: var(--green); }
+    .console-text.lvl-info    { color: #c9d1d9; }
+    .console-text.lvl-debug   { color: #444c56; }
+
+    /* ── Forms ───────────────────────────────────────────────────────────── */
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .form-control {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-control:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.1);
+    }
+
+    .form-control[readonly] {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 0;
+    }
+
+    .input-group .form-control {
+      border-radius: 6px 0 0 6px;
+      flex: 1;
+    }
+
+    .input-group .btn {
+      border-radius: 0 6px 6px 0;
+      border-left: none;
+    }
+
+    /* ── Section dividers ────────────────────────────────────────────────── */
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    /* ── Stat cards ──────────────────────────────────────────────────────── */
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Status dot ──────────────────────────────────────────────────────── */
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+    .dot-green  { background: var(--green); }
+    .dot-yellow { background: var(--yellow); }
+    .dot-red    { background: var(--red); }
+    .dot-muted  { background: var(--muted); }
+
+    /* ── Tab bar ─────────────────────────────────────────────────────────── */
+
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+    }
+
+    .tab {
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--muted);
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab:hover { color: var(--text); }
+
+    .tab.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    /* ── Misc utilities ──────────────────────────────────────────────────── */
+
+    .flex { display: flex; }
+    .flex-1 { flex: 1; }
+    .items-center { align-items: center; }
+    .gap-8 { gap: 8px; }
+    .gap-12 { gap: 12px; }
+    .gap-16 { gap: 16px; }
+    .mb-8 { margin-bottom: 8px; }
+    .mb-12 { margin-bottom: 12px; }
+    .mb-16 { margin-bottom: 16px; }
+    .mb-20 { margin-bottom: 20px; }
+    .mb-24 { margin-bottom: 24px; }
+    .mt-8 { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .text-muted { color: var(--muted); }
+    .text-green { color: var(--green); }
+    .text-red { color: var(--red); }
+    .text-yellow { color: var(--yellow); }
+    .text-blue { color: var(--blue); }
+    .font-mono {
+      font-family: "SFMono-Regular", "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+    }
+    .hidden { display: none !important; }
+
+    /* ── Scrollbar ───────────────────────────────────────────────────────── */
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #444c56; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-badge">
+        <span class="logo-icon">🗓</span>
+        <div class="logo-text">
+          <span class="logo-title">TMC Calendar</span>
+          <span class="logo-sub">Admin Console</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">📊</span>
+        Dashboard
+      </a>
+      <a href="{{ url_for('run_page') }}" class="nav-link {% if request.endpoint == 'run_page' %}active{% endif %}">
+        <span class="nav-icon">▶</span>
+        Run Scrapers
+      </a>
+      <a href="{{ url_for('audit_page') }}" class="nav-link {% if request.endpoint == 'audit_page' %}active{% endif %}">
+        <span class="nav-icon">🔍</span>
+        Audit
+      </a>
+      <a href="{{ url_for('logs_page') }}" class="nav-link {% if request.endpoint == 'logs_page' %}active{% endif %}">
+        <span class="nav-icon">📋</span>
+        Logs
+      </a>
+      <a href="{{ url_for('config_page') }}" class="nav-link {% if request.endpoint == 'config_page' %}active{% endif %}">
+        <span class="nav-icon">⚙</span>
+        Config
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator" id="sidebar-status">
+        <span class="status-dot {% if is_running %}running{% endif %}" id="sidebar-dot"></span>
+        <span id="sidebar-status-text">{% if is_running %}Running: {{ run_source }}{% else %}Idle{% endif %}</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+      <div class="topbar-meta" id="topbar-clock"></div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container" style="padding-top:12px;">
+          {% for cat, msg in messages %}
+            <div class="flash {{ cat }}">{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="page-content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('topbar-clock').textContent =
+      now.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) + '  ' +
+      now.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Poll sidebar status every 3s
+  function pollSidebarStatus() {
+    fetch('/api/status').then(r => r.json()).then(d => {
+      const dot  = document.getElementById('sidebar-dot');
+      const text = document.getElementById('sidebar-status-text');
+      if (d.running) {
+        dot.classList.add('running');
+        text.textContent = 'Running: ' + (d.source || '…');
+      } else {
+        dot.classList.remove('running');
+        text.textContent = 'Idle';
+      }
+    }).catch(() => {});
+  }
+  setInterval(pollSidebarStatus, 3000);
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

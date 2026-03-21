@@ -1,0 +1,372 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Audit{% endblock %}
+{% block page_title %}Audit Scrapers{% endblock %}
+
+{% block extra_head %}
+<style>
+  .audit-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .audit-results-table {
+    margin-top: 16px;
+  }
+
+  .audit-result-row.pass { border-left: 3px solid var(--green); }
+  .audit-result-row.warn { border-left: 3px solid var(--yellow); }
+  .audit-result-row.fail { border-left: 3px solid var(--red); }
+  .audit-result-row.error { border-left: 3px solid var(--red); }
+  .audit-result-row.unknown { border-left: 3px solid var(--muted); }
+
+  .audit-summary-bar {
+    display: flex;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .audit-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .console-panel {
+    height: 460px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="audit-layout">
+
+  <!-- Controls -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Audit Group</span>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
+        {% for g in [('all','All Scrapers','🔍'), ('nyc','NYC','🏙'), ('dc','DC','🏛'), ('paris','Paris','🗼')] %}
+        <button
+          class="btn btn-secondary"
+          id="group-btn-{{ g[0] }}"
+          onclick="selectAuditGroup('{{ g[0] }}', this)"
+          style="justify-content:flex-start;{% if g[0]=='all' %}background:rgba(88,166,255,0.12);border-color:rgba(88,166,255,0.4);color:var(--blue);{% endif %}"
+        >
+          <span>{{ g[2] }}</span>
+          <span>{{ g[1] }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary flex-1" id="audit-start-btn" onclick="startAudit()">🔍 Run Audit</button>
+      <button class="btn btn-danger hidden" id="audit-stop-btn" onclick="stopAudit()">■ Stop</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="card" id="summary-card" style="display:none;">
+      <div class="card-header">
+        <span class="card-title">Summary</span>
+      </div>
+      <div class="card-body">
+        <div id="audit-summary-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Console + Results -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span class="card-title">Live Output</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:11px;color:var(--muted);" id="audit-line-count">0 lines</span>
+          <div class="status-bar" style="padding:5px 10px;">
+            <span class="status-bar-dot" id="audit-status-dot"></span>
+            <span id="audit-status-text" style="font-size:12px;color:var(--text);">Ready</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="clearAuditConsole()">Clear</button>
+        </div>
+      </div>
+      <div class="console-panel" id="audit-console"></div>
+    </div>
+
+    <!-- Parsed results table -->
+    <div id="results-section" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Parsed Results</span>
+          <span id="results-count" style="font-size:12px;color:var(--muted);"></span>
+        </div>
+        <div id="audit-summary-bar" class="audit-summary-bar" style="margin:12px 16px 0;"></div>
+        <div style="overflow-x:auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Scraper</th>
+                <th>Status</th>
+                <th>Events</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="audit-results-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let auditGroup = 'all';
+  let auditSSE = null;
+  let auditRunning = false;
+  let auditLineCount = 0;
+  let auditLines = [];
+  let userScrolledUp = false;
+
+  const consoleEl = document.getElementById('audit-console');
+  const statusDot = document.getElementById('audit-status-dot');
+  const statusText = document.getElementById('audit-status-text');
+  const startBtn = document.getElementById('audit-start-btn');
+  const stopBtn = document.getElementById('audit-stop-btn');
+  const lineCountEl = document.getElementById('audit-line-count');
+
+  consoleEl.addEventListener('scroll', () => {
+    const atBottom = consoleEl.scrollHeight - consoleEl.scrollTop - consoleEl.clientHeight < 40;
+    userScrolledUp = !atBottom;
+  });
+
+  function scrollConsole() {
+    if (!userScrolledUp) consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  function appendAuditLine(ts, text) {
+    const div = document.createElement('div');
+    div.className = 'console-line';
+
+    const tsSpan = document.createElement('span');
+    tsSpan.className = 'console-ts';
+    tsSpan.textContent = ts;
+
+    const textSpan = document.createElement('span');
+    let lvlClass = 'lvl-info';
+    const upper = text.toUpperCase();
+    if (upper.includes('FAIL') || upper.includes('ERROR')) lvlClass = 'lvl-error';
+    else if (upper.includes('WARN')) lvlClass = 'lvl-warning';
+    else if (upper.includes('PASS') || upper.includes('OK') || upper.includes('SUCCESS')) lvlClass = 'lvl-success';
+    textSpan.className = 'console-text ' + lvlClass;
+    textSpan.textContent = text;
+
+    div.appendChild(tsSpan);
+    div.appendChild(textSpan);
+    consoleEl.appendChild(div);
+    auditLines.push(text);
+    auditLineCount++;
+    lineCountEl.textContent = auditLineCount + ' line' + (auditLineCount !== 1 ? 's' : '');
+    scrollConsole();
+  }
+
+  function clearAuditConsole() {
+    consoleEl.innerHTML = '';
+    auditLines = [];
+    auditLineCount = 0;
+    lineCountEl.textContent = '0 lines';
+    document.getElementById('results-section').style.display = 'none';
+  }
+
+  function selectAuditGroup(group, btn) {
+    auditGroup = group;
+    document.querySelectorAll('[id^=group-btn-]').forEach(b => {
+      b.style.background = '';
+      b.style.borderColor = '';
+      b.style.color = '';
+    });
+    btn.style.background = 'rgba(88,166,255,0.12)';
+    btn.style.borderColor = 'rgba(88,166,255,0.4)';
+    btn.style.color = 'var(--blue)';
+  }
+
+  function setAuditRunning(running) {
+    auditRunning = running;
+    if (running) {
+      startBtn.disabled = true;
+      startBtn.classList.add('disabled');
+      stopBtn.classList.remove('hidden');
+      statusDot.className = 'status-bar-dot running';
+      statusText.textContent = 'Running…';
+    } else {
+      startBtn.disabled = false;
+      startBtn.classList.remove('disabled');
+      stopBtn.classList.add('hidden');
+    }
+  }
+
+  function startAudit() {
+    if (auditRunning) return;
+    clearAuditConsole();
+    userScrolledUp = false;
+    setAuditRunning(true);
+
+    fetch('/api/audit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({group: auditGroup})
+    })
+    .then(r => {
+      if (r.status === 409) {
+        setAuditRunning(false);
+        statusDot.className = 'status-bar-dot error';
+        statusText.textContent = 'Already running';
+        return null;
+      }
+      return r.json();
+    })
+    .then(d => {
+      if (!d) return;
+      appendAuditLine(nowTs(), '[admin] Audit started: group=' + d.group);
+      openAuditSSE(0);
+    })
+    .catch(err => {
+      setAuditRunning(false);
+      statusDot.className = 'status-bar-dot error';
+      statusText.textContent = 'Error: ' + err.message;
+    });
+  }
+
+  function openAuditSSE(offset) {
+    if (auditSSE) { auditSSE.close(); auditSSE = null; }
+    auditSSE = new EventSource('/api/stream?target=audit&offset=' + offset);
+    let currentOffset = offset;
+
+    auditSSE.onmessage = function(e) {
+      const data = JSON.parse(e.data);
+      if (data.__end__) {
+        auditSSE.close(); auditSSE = null;
+        const rc = data.returncode;
+        setAuditRunning(false);
+        if (rc === 0) {
+          statusDot.className = 'status-bar-dot success';
+          statusText.textContent = '✓ Audit complete';
+          appendAuditLine(nowTs(), '[admin] ✓ Audit completed (exit 0)');
+        } else {
+          statusDot.className = 'status-bar-dot error';
+          statusText.textContent = '✗ Failed (exit ' + rc + ')';
+          appendAuditLine(nowTs(), '[admin] ✗ Audit failed (exit ' + rc + ')');
+        }
+        parseAuditResults();
+        return;
+      }
+      if (data.ts && data.line !== undefined) {
+        appendAuditLine(data.ts, data.line);
+        currentOffset++;
+      }
+    };
+
+    auditSSE.onerror = function() {
+      if (auditRunning) setTimeout(() => openAuditSSE(currentOffset), 1000);
+      if (auditSSE) { auditSSE.close(); auditSSE = null; }
+    };
+  }
+
+  function stopAudit() {
+    fetch('/api/stop/audit', {method: 'POST'}).then(r => r.json()).then(d => {
+      appendAuditLine(nowTs(), '[admin] Stop requested: ' + d.status);
+    });
+  }
+
+  function parseAuditResults() {
+    const results = [];
+    const summaryMap = {pass: 0, warn: 0, fail: 0, error: 0};
+
+    for (const line of auditLines) {
+      // Match patterns like: [PASS] scraper_name - N events (1.23s)
+      // or: [FAIL] scraper_name - message
+      const m = line.match(/\[?(PASS|WARN|FAIL|ERROR|OK)\]?\s+([^\s\-–]+)[\s\-–]*(.*)/i);
+      if (m) {
+        const status = m[1].toUpperCase();
+        const name = m[2].trim();
+        const detail = m[3].trim();
+
+        let events = null;
+        const evMatch = detail.match(/(\d+)\s+events?/i);
+        if (evMatch) events = parseInt(evMatch[1]);
+
+        let time = null;
+        const timeMatch = detail.match(/([\d.]+)s/);
+        if (timeMatch) time = timeMatch[1] + 's';
+
+        const statusKey = status === 'OK' ? 'pass' : status.toLowerCase();
+        if (summaryMap[statusKey] !== undefined) summaryMap[statusKey]++;
+
+        results.push({ status: statusKey, name, detail, events, time });
+      }
+    }
+
+    if (!results.length) return;
+
+    document.getElementById('results-section').style.display = 'block';
+    document.getElementById('results-count').textContent = results.length + ' scrapers';
+
+    // Summary bar
+    const bar = document.getElementById('audit-summary-bar');
+    bar.innerHTML = [
+      ['pass', '✓ Pass', 'badge-green'],
+      ['warn', '⚠ Warn', 'badge-yellow'],
+      ['fail', '✗ Fail', 'badge-red'],
+      ['error', '✗ Error', 'badge-red'],
+    ].filter(([k]) => summaryMap[k] > 0).map(([k, label, cls]) =>
+      `<div class="audit-summary-item"><span class="badge ${cls}">${summaryMap[k]}</span><span style="font-size:12px;color:var(--muted);">${label}</span></div>`
+    ).join('');
+
+    const tbody = document.getElementById('audit-results-tbody');
+    tbody.innerHTML = results.map(r => {
+      const statusBadge = {
+        pass:  '<span class="badge badge-green">PASS</span>',
+        warn:  '<span class="badge badge-yellow">WARN</span>',
+        fail:  '<span class="badge badge-red">FAIL</span>',
+        error: '<span class="badge badge-red">ERROR</span>',
+      }[r.status] || '<span class="badge badge-muted">UNKNOWN</span>';
+
+      const eventsCell = r.events !== null ? `<span style="color:var(--blue);font-weight:600;">${r.events}</span>` : '<span style="color:var(--muted);">—</span>';
+      const timeCell = r.time ? `<span class="font-mono" style="color:var(--muted);">${r.time}</span>` : '';
+      const borderClass = 'audit-result-row ' + (r.status || 'unknown');
+
+      return `<tr class="${borderClass}">
+        <td style="font-weight:500;">${r.name}</td>
+        <td>${statusBadge}</td>
+        <td>${eventsCell}</td>
+        <td style="font-size:12px;color:var(--muted);">${r.detail} ${timeCell}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function nowTs() {
+    return new Date().toTimeString().slice(0,8);
+  }
+
+  // Check if audit already running on load
+  fetch('/api/audit/status').then(r => r.json()).then(d => {
+    if (d.running) {
+      setAuditRunning(true);
+      statusText.textContent = 'Running: group=' + (d.group || '…');
+      openAuditSSE(d.log_length);
+    }
+  });
+</script>
+{% endblock %}

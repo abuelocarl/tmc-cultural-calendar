@@ -8,5 +8,12 @@
       "port": 5001,
       "autoPort": false
     }
+    ,
+    {
+      "name": "tmc-admin",
+      "runtimeExecutable": "/usr/bin/python3",
+      "runtimeArgs": ["/Users/carloscalegari/Library/tmc_admin_server.py"],
+      "port": 5002
+    }
   ]
 }

@@ -1,0 +1,244 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Logs{% endblock %}
+{% block page_title %}Scraper Logs{% endblock %}
+
+{% block extra_head %}
+<style>
+  .log-meta-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+
+  .log-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .log-meta-label {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 10px;
+  }
+
+  .log-meta-value {
+    color: var(--text);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+
+  .log-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .lines-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    padding: 6px 10px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .lines-select:focus { border-color: var(--blue); }
+
+  .log-viewer {
+    background: #010409;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: "SFMono-Regular", "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12px;
+    overflow-y: auto;
+    padding: 12px;
+    height: calc(100vh - 320px);
+    min-height: 400px;
+  }
+
+  .log-line {
+    display: flex;
+    gap: 8px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .log-line:hover { background: rgba(255,255,255,0.03); border-radius: 2px; }
+
+  .log-num {
+    color: #30363d;
+    user-select: none;
+    flex-shrink: 0;
+    min-width: 40px;
+    text-align: right;
+    font-size: 10px;
+    padding-top: 2px;
+  }
+
+  .log-text { flex: 1; }
+  .log-text.lvl-info    { color: #c9d1d9; }
+  .log-text.lvl-warning { color: var(--yellow); }
+  .log-text.lvl-error   { color: var(--red); }
+  .log-text.lvl-debug   { color: #444c56; }
+
+  #no-log-msg {
+    color: var(--muted);
+    text-align: center;
+    padding: 40px;
+    font-size: 14px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="log-meta-bar" id="log-meta-bar">
+  <div class="log-meta-item">
+    <span class="log-meta-label">File</span>
+    <span class="log-meta-value" id="meta-file">{{ log_file }}</span>
+  </div>
+  <div class="log-meta-item">
+    <span class="log-meta-label">Size</span>
+    <span class="log-meta-value" id="meta-size">—</span>
+  </div>
+  <div class="log-meta-item">
+    <span class="log-meta-label">Modified</span>
+    <span class="log-meta-value" id="meta-modified">—</span>
+  </div>
+  <div class="log-meta-item">
+    <span class="log-meta-label">Lines</span>
+    <span class="log-meta-value" id="meta-lines">—</span>
+  </div>
+</div>
+
+<div class="log-toolbar">
+  <button class="btn btn-secondary btn-sm" onclick="loadLogs()">↻ Refresh</button>
+
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:12px;color:var(--muted);">Show last</span>
+    <select class="lines-select" id="lines-select" onchange="loadLogs()">
+      <option value="100">100 lines</option>
+      <option value="200" selected>200 lines</option>
+      <option value="500">500 lines</option>
+      <option value="0">All lines</option>
+    </select>
+  </div>
+
+  <div style="flex:1;"></div>
+
+  <a class="btn btn-ghost btn-sm" id="download-link" href="{{ log_file }}" download>⬇ Download</a>
+</div>
+
+<div class="log-viewer" id="log-viewer">
+  <div id="no-log-msg">Loading…</div>
+</div>
+
+<div style="margin-top:8px;font-size:11px;color:var(--muted);" id="display-info"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('en-US', {
+        month:'short', day:'numeric', year:'numeric',
+        hour:'2-digit', minute:'2-digit', second:'2-digit'
+      });
+    } catch(e) { return iso; }
+  }
+
+  function getLogLevel(line) {
+    if (/\bERROR\b|\bCRITICAL\b/i.test(line)) return 'lvl-error';
+    if (/\bWARNING\b|\bWARN\b/i.test(line)) return 'lvl-warning';
+    if (/\bDEBUG\b/i.test(line)) return 'lvl-debug';
+    return 'lvl-info';
+  }
+
+  function loadLogs() {
+    const n = document.getElementById('lines-select').value;
+    const viewer = document.getElementById('log-viewer');
+    viewer.innerHTML = '<div id="no-log-msg" style="color:var(--muted);text-align:center;padding:40px;">Loading…</div>';
+
+    fetch('/api/logs?lines=' + n)
+      .then(r => r.json())
+      .then(data => {
+        // Update meta
+        document.getElementById('meta-size').textContent = data.exists ? formatBytes(data.size) : '—';
+        document.getElementById('meta-modified').textContent = data.exists ? formatDate(data.last_modified) : '—';
+        document.getElementById('meta-lines').textContent = data.exists ? data.total_lines.toLocaleString() : '—';
+
+        if (!data.exists || !data.lines.length) {
+          viewer.innerHTML = '<div id="no-log-msg" style="color:var(--muted);text-align:center;padding:40px;">' +
+            (data.exists ? 'Log file is empty.' : 'Log file not found.') + '</div>';
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        const startNum = data.total_lines - data.lines.length + 1;
+
+        data.lines.forEach((line, i) => {
+          const div = document.createElement('div');
+          div.className = 'log-line';
+
+          const numSpan = document.createElement('span');
+          numSpan.className = 'log-num';
+          numSpan.textContent = (startNum + i);
+
+          const textSpan = document.createElement('span');
+          textSpan.className = 'log-text ' + getLogLevel(line);
+          textSpan.textContent = line;
+
+          div.appendChild(numSpan);
+          div.appendChild(textSpan);
+          frag.appendChild(div);
+        });
+
+        viewer.innerHTML = '';
+        viewer.appendChild(frag);
+
+        // Auto-scroll to bottom
+        viewer.scrollTop = viewer.scrollHeight;
+
+        const info = document.getElementById('display-info');
+        const shown = data.lines.length;
+        const total = data.total_lines;
+        info.textContent = 'Showing ' + shown.toLocaleString() + ' of ' + total.toLocaleString() + ' lines';
+      })
+      .catch(err => {
+        viewer.innerHTML = '<div id="no-log-msg" style="color:var(--red);text-align:center;padding:40px;">Error loading logs: ' + err.message + '</div>';
+      });
+  }
+
+  // Load on page start
+  loadLogs();
+
+  // Auto-refresh every 10s
+  setInterval(() => {
+    loadLogs();
+  }, 10000);
+</script>
+{% endblock %}
