@@ -71,6 +71,13 @@
     letter-spacing: 0.05em;
   }
 
+  .date-range {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.3;
+  }
+
   .scraper-actions {
     display: flex;
     align-items: center;
@@ -169,6 +176,9 @@
         <div>
           <div class="event-count {% if count == 0 %}zero{% endif %}">{{ count }}</div>
           <div class="event-label">events</div>
+          {% if date_ranges.get(s.key) %}
+          <div class="date-range">{{ date_ranges[s.key] }}</div>
+          {% endif %}
         </div>
         <div class="scraper-actions">
           <button class="btn btn-ghost btn-xs" onclick="runSingle('{{ s.key }}')" title="Run {{ s.name }}">▶</button>
@@ -200,6 +210,9 @@
         <div>
           <div class="event-count {% if count == 0 %}zero{% endif %}">{{ count }}</div>
           <div class="event-label">events</div>
+          {% if date_ranges.get(s.key) %}
+          <div class="date-range">{{ date_ranges[s.key] }}</div>
+          {% endif %}
         </div>
         <div class="scraper-actions">
           <button class="btn btn-ghost btn-xs" onclick="runSingle('{{ s.key }}')" title="Run {{ s.name }}">▶</button>
@@ -231,6 +244,9 @@
         <div>
           <div class="event-count {% if count == 0 %}zero{% endif %}">{{ count }}</div>
           <div class="event-label">events</div>
+          {% if date_ranges.get(s.key) %}
+          <div class="date-range">{{ date_ranges[s.key] }}</div>
+          {% endif %}
         </div>
         <div class="scraper-actions">
           <button class="btn btn-ghost btn-xs" onclick="runSingle('{{ s.key }}')" title="Run {{ s.name }}">▶</button>

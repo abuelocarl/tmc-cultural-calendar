@@ -199,18 +199,41 @@ def time_ago(iso_str):
 def get_event_counts():
     events_file = DATA_DIR / "events.json"
     counts = {}
+    date_ranges = {}
     if events_file.exists():
         try:
             data = json.loads(events_file.read_text())
             events = data.get("events", [])
+            _min_dates = {}
+            _max_dates = {}
             for ev in events:
                 src = ev.get("source", "")
                 key = SOURCE_TO_KEY.get(src)
-                if key:
-                    counts[key] = counts.get(key, 0) + 1
+                if not key:
+                    continue
+                counts[key] = counts.get(key, 0) + 1
+                d = ev.get("date", "")
+                if d:
+                    try:
+                        from datetime import date as _date
+                        parsed = _date.fromisoformat(d[:10])
+                        if key not in _min_dates or parsed < _min_dates[key]:
+                            _min_dates[key] = parsed
+                        if key not in _max_dates or parsed > _max_dates[key]:
+                            _max_dates[key] = parsed
+                    except ValueError:
+                        pass
+            for key in counts:
+                mn = _min_dates.get(key)
+                mx = _max_dates.get(key)
+                if mn and mx:
+                    if mn.year == mx.year:
+                        date_ranges[key] = f"{mn.strftime('%b %-d')} – {mx.strftime('%b %-d, %Y')}"
+                    else:
+                        date_ranges[key] = f"{mn.strftime('%b %-d, %Y')} – {mx.strftime('%b %-d, %Y')}"
         except Exception:
             pass
-    return counts
+    return counts, date_ranges
 
 
 def build_proc_env():
@@ -267,7 +290,7 @@ def _finish_run(run_id, source, start_time):
 
 @app.route("/")
 def dashboard():
-    counts = get_event_counts()
+    counts, date_ranges = get_event_counts()
     runs = load_runs()
     last_run = runs[0] if runs else None
     total_events = sum(counts.values())
@@ -279,6 +302,7 @@ def dashboard():
         scrapers=SCRAPERS,
         scraper_by_key=SCRAPER_BY_KEY,
         counts=counts,
+        date_ranges=date_ranges,
         runs=runs[:10],
         total_events=total_events,
         active_scrapers=active_scrapers,
@@ -557,11 +581,12 @@ def api_clear_log():
 
 @app.route("/api/dashboard")
 def api_dashboard():
-    counts = get_event_counts()
+    counts, date_ranges = get_event_counts()
     runs = load_runs()
     last_run = runs[0] if runs else None
     return jsonify({
         "counts": counts,
+        "date_ranges": date_ranges,
         "total_events": sum(counts.values()),
         "active_scrapers": len([k for k, v in counts.items() if v > 0]),
         "last_run": last_run,
