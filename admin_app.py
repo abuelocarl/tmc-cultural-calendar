@@ -340,7 +340,7 @@ def api_run():
     if source and source != "all":
         cmd += ["--source", source]
     if dry_run:
-        cmd += ["--dry-run"]
+        cmd += ["--no-save"]
 
     run_id = str(uuid.uuid4())[:8]
     start_time = time.time()
