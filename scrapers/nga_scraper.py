@@ -24,7 +24,7 @@ from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 
-NGA_EVENTS_URL = "https://www.nga.gov/calendar.html"
+NGA_CALENDAR_URL = "https://www.nga.gov/calendar"
 NGA_BASE = "https://www.nga.gov"
 LOCATION = "National Gallery of Art, 6th St & Constitution Ave NW, Washington, DC 20565"
 BOROUGH = "National Mall"
@@ -76,99 +76,141 @@ def _infer_category(title: str, desc: str) -> str:
     return "Arts & Culture"
 
 
+def _parse_ampm_time(text: str) -> str:
+    """Convert '11:00 a.m.' or '1:30 p.m.' to 24h 'HH:MM'. Returns '' on failure."""
+    text = text.strip().replace("\u202f", " ").replace("\xa0", " ")
+    m = re.match(r"(\d{1,2}):(\d{2})\s*(a\.?m\.?|p\.?m\.?)", text, re.I)
+    if not m:
+        return ""
+    hour, minute, meridiem = int(m.group(1)), int(m.group(2)), m.group(3).lower().replace(".", "")
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _parse_page(soup, seen_urls, today, cap) -> List[Dict]:
+    """Extract events from a single NGA calendar page."""
+    events = []
+
+    for item in soup.select("div.c-event-list-item"):
+        try:
+            # Title link — carries evd= param and all sub-fields
+            a = item.select_one("a.c-event-list-item__title")
+            if not a:
+                continue
+
+            href = a.get("href", "")
+            url = href if href.startswith("http") else NGA_BASE + href
+
+            evd_match = re.search(r"evd=(\d+)", href)
+            if not evd_match:
+                continue
+            date_str, _ = _parse_evd(evd_match.group(1))
+            if not date_str:
+                continue
+
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+
+            # Title from h4 span
+            title_el = a.select_one("h4 span, h4")
+            title = title_el.get_text(strip=True) if title_el else a.get_text(strip=True)
+            if not title or len(title) < 3:
+                continue
+
+            # Event type (eyebrow label)
+            type_el = a.select_one("span.f-text--eyebrow")
+            event_type = type_el.get_text(strip=True) if type_el else ""
+
+            # Location within gallery (p inside the link)
+            loc_detail_el = a.select_one("p")
+            loc_detail = loc_detail_el.get_text(strip=True) if loc_detail_el else ""
+
+            # Time from meta div: "11:00 a.m. | – | 12:00 p.m."
+            meta = item.select_one("div.c-event-list-item__meta")
+            time_str = end_time_str = ""
+            if meta:
+                meta_parts = [t.strip() for t in meta.get_text(separator="|").split("|") if t.strip() and t.strip() != "–"]
+                if meta_parts:
+                    time_str = _parse_ampm_time(meta_parts[0])
+                if len(meta_parts) >= 2:
+                    end_time_str = _parse_ampm_time(meta_parts[-1])
+
+            # Image
+            img = item.find("img")
+            image_url = ""
+            if img:
+                src = img.get("src") or img.get("data-src") or ""
+                image_url = src if src.startswith("http") else (NGA_BASE + src if src.startswith("/") else src)
+
+            # Build description from event type + gallery location
+            description = " · ".join(filter(None, [event_type, loc_detail]))
+
+            events.append({
+                "title": title,
+                "date": date_str,
+                "time": time_str,
+                "end_time": end_time_str,
+                "location": LOCATION,
+                "location_name": "National Gallery of Art",
+                "location_address": "6th St & Constitution Ave NW, Washington, DC 20565",
+                "neighborhood": "National Mall",
+                "description": description[:400],
+                "url": url,
+                "category": _infer_category(title, description),
+                "source": "National Gallery of Art",
+                "borough": BOROUGH,
+                "image_url": image_url,
+                "price": "Free",
+                "is_free": True,
+                "is_family_friendly": any(w in (title + " " + description).lower() for w in ["family", "kids", "children", "all ages"]),
+                "is_outdoor": any(w in (title + " " + description).lower() for w in ["outdoor", "garden", "plaza", "open air"]),
+                "city": "Washington DC",
+            })
+        except Exception as e:
+            logger.debug(f"NGA: error parsing item: {e}")
+
+    return events
+
+
 def scrape_nga_events() -> List[Dict]:
-    """Scrape events from the National Gallery of Art."""
+    """Scrape events from the National Gallery of Art, paginating across all future dates."""
     events = []
     seen_urls = set()
+    today = date.today()
+    cap = today + timedelta(days=183)
 
     try:
         scraper = cloudscraper.create_scraper(
             browser={"browser": "chrome", "platform": "darwin", "mobile": False}
         )
-        resp = scraper.get(NGA_EVENTS_URL, timeout=25)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
 
-        # NGA: .views-row > .c-content-card
-        cards = soup.select(".views-row .c-content-card")
-        if not cards:
-            cards = soup.select(".views-row")
+        params = {
+            "visit_start": today.strftime("%Y-%m-%d"),
+            "visit_end": cap.strftime("%Y-%m-%d"),
+        }
 
-        for card in cards[:40]:
-            try:
-                # Title + link
-                title_el = card.find(["h2", "h3", "h4"])
-                if not title_el:
-                    continue
-                link = title_el.find("a", href=True) or card.find("a", href=True)
-                title_text = title_el.get_text(separator=" ", strip=True)
-                # NGA titles sometimes have "Category:Title" format
-                if ":" in title_text:
-                    parts = title_text.split(":", 1)
-                    title = parts[1].strip()
-                else:
-                    title = title_text.strip()
-                if not title or len(title) < 3:
-                    continue
+        page = 0
+        while True:
+            params["page"] = page
+            resp = scraper.get(NGA_CALENDAR_URL, params=params, timeout=25)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
 
-                url = ""
-                date_str = ""
-                time_str = ""
-                if link:
-                    href = link["href"]
-                    url = href if href.startswith("http") else NGA_BASE + href
-                    # Extract ?evd= param
-                    evd_match = re.search(r"evd=(\d+)", href)
-                    if evd_match:
-                        date_str, time_str = _parse_evd(evd_match.group(1))
+            page_events = _parse_page(soup, seen_urls, today, cap)
+            events.extend(page_events)
 
-                # Skip events without a valid future date (e.g. exhibitions)
-                if not date_str:
-                    continue
+            # Stop if no events found on this page or no next-page link
+            has_next = soup.select_one(f'a[href*="page={page + 1}"]')
+            if not page_events or not has_next:
+                break
 
-                if url in seen_urls:
-                    continue
-                if url:
-                    seen_urls.add(url)
-
-                # Description from subtitle / body text
-                desc_el = card.select_one(
-                    ".c-content-card__description, .c-content-card__subtitle, p"
-                )
-                description = desc_el.get_text(strip=True) if desc_el else ""
-
-                # Image
-                img = card.find("img")
-                image_url = ""
-                if img:
-                    src = img.get("src") or img.get("data-src") or ""
-                    if src.startswith("/"):
-                        src = NGA_BASE + src
-                    image_url = src
-
-                events.append({
-                    "title": title,
-                    "date": date_str,
-                    "time": time_str,
-                    "end_time": "",
-                    "location": LOCATION,
-                    "location_name": "National Gallery of Art",
-                    "location_address": "6th St & Constitution Ave NW, Washington, DC 20565",
-                    "neighborhood": "National Mall",
-                    "description": description[:400],
-                    "url": url,
-                    "category": _infer_category(title, description),
-                    "source": "National Gallery of Art",
-                    "borough": BOROUGH,
-                    "image_url": image_url,
-                    "price": "Free",
-                    "is_free": True,
-                    "is_family_friendly": any(w in (title+" "+description).lower() for w in ["family","kids","children","all ages"]),
-                    "is_outdoor": any(w in (title+" "+description).lower() for w in ["outdoor","garden","plaza","open air"]),
-                    "city": "Washington DC",
-                })
-            except Exception as e:
-                logger.debug(f"NGA: error parsing card: {e}")
+            page += 1
+            if page > 60:   # safety cap
+                break
 
     except Exception as e:
         logger.error(f"NGA scraper failed: {e}")
