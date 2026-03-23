@@ -443,7 +443,7 @@ def api_audit():
 
     cmd = [sys.executable, str(AUDIT_SCRIPT)]
     if group and group != "all":
-        cmd += ["--group", group]
+        cmd += ["--source", group]
 
     env = build_proc_env()
     try:
